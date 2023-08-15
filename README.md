@@ -26,6 +26,10 @@ Video mode:
 
 GoPro2GSV only officially supports GoPro Fusion and GoPro MAX cameras where the image or video has been shot in 360 mode (`equirectangular`).
 
+## READ BEFORE YOU BEGIN
+
+* this script does not work with unprocessed files from Fusion or MAX cameras. gopro2frames will take GoPro Fusion dual fisheye images, GoPro Fusion dual fisheye videos, or GoPro MAX 360 videos and convert them into equirectangular image frames that can be uploaded using photo mode, see: https://github.com/trek-view/gopro2frames
+
 ## Inputs
 
 ### Image -> video processing pipeline
