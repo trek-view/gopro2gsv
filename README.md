@@ -6,12 +6,23 @@ The results of this work is published to either Google StreetView or Mapillary. 
 
 Both these tools accept video uploads containing either CAMM or GPMF telemetry tracks.
 
-To suport this workflow GoPro2GSV;
+To suport this workflow GoPro2GSV supports a photo and timelapse mode.
 
-* takes timelapse images and converts them into a video (with GPMF telemetry)
-* adds a nadir to all inputted or converted videos
+Photo mode:
 
-The output will provide a video that can be uploaded directly to [Google StreetView Studio](https://streetviewstudio.maps.google.com/).
+1. takes timelapse images (equirectangular) and converts them into a single video with a GPMF or CAMM telemetry track
+2. optionally adds a nadir to the resulting video
+3. stores output to local filesystem
+4. uploads video to GSV
+5. stores records in database
+
+Video mode:
+
+1. takes video (equirectangular) with GPMF data
+2. optionally adds a nadir to the resulting video
+3. stores output to local filesystem
+4. uploads video to GSV
+5. stores records in database
 
 GoPro2GSV only officially supports GoPro Fusion and GoPro MAX cameras where the image or video has been shot in 360 mode (`equirectangular`).
 
@@ -59,7 +70,7 @@ Note, the about command assumes that only the valid images are in the directory.
 There are three distinct parts of the video created from the validated images
 
 * video track: the video made from the images
-* telemetry track: the telemetry track created from the image metadata (GPMF)
+* telemetry track: the telemetry track created from the image metadata (GPMF or CAMM)
 * video file metadata: the file metadata
 
 ##### Video processing
@@ -68,8 +79,8 @@ There are three distinct parts of the video created from the validated images
 
 Helpful supporting information for this section:
 
-* https://www.trekview.org/blog/2022/create-google-street-view-video-publish-api/
-* https://trac.ffmpeg.org/wiki/Encode/H.265
+* Publising a video to StreetView API: https://www.trekview.org/blog/2022/create-google-street-view-video-publish-api/
+* H265 encoding in ffmpeg: https://trac.ffmpeg.org/wiki/Encode/H.265
 
 Video processing can be done by ffmpeg as follows
 
@@ -92,19 +103,24 @@ This means at a frame rate of 5 FPS (0.2 seconds per frame), each video will con
 
 As such, a sequence with 720 images will create three videos; two with 300 frames (1 min each) and one with 120 frames (24 seconds long). Each video name is appended with a number based on order, e.g. `timelapse_0001.mp4`, `timelapse_0002.mp4`.
 
-###### GPMF track
+###### GPMF/CAMM track
 
 Helpful supporting information for this section:
 
-* https://www.trekview.org/blog/2020/metadata-exif-xmp-360-video-files-gopro-gpmd/
-* https://www.trekview.org/blog/2022/injecting-camm-gpmf-telemetry-videos-part-5-gpmf/
-* https://github.com/trek-view/tools/tree/main/understanding_mp4
-* https://github.com/trek-view/tools/tree/main/understanding_gps
-* https://github.com/trek-view/tools/blob/main/understanding_gpmf_telemetry.md
-* https://www.trekview.org/blog/2022/turn-gopro-timewarp-video-into-timelapse-images/
+* Overview to GPMF: https://www.trekview.org/blog/2020/metadata-exif-xmp-360-video-files-gopro-gpmd/
+* Overview to CAMM https://www.trekview.org/blog/2021/metadata-exif-xmp-360-video-files-camm-camera-motion-metadata-spec/
+* Adding a CAMM track to video: https://www.trekview.org/blog/2022/injecting-camm-gpmd-telemetry-videos-part-4-camm/
+* Adding a GPMF track to video:  https://www.trekview.org/blog/2022/injecting-camm-gpmf-telemetry-videos-part-5-gpmf/
+* Understanding MP4s: https://github.com/trek-view/tools/tree/main/understanding_mp4
+* Understanding GPS: https://github.com/trek-view/tools/tree/main/understanding_gps
+* Understanding GMPF telemetry: https://github.com/trek-view/tools/blob/main/understanding_gpmf_telemetry.md
+* Understanding CAMM telemetry: https://github.com/trek-view/tools/tree/main/understanding_camm
+* Setting times between images https://www.trekview.org/blog/2022/turn-gopro-timewarp-video-into-timelapse-images/
 * Proof of concept implementation: https://github.com/trek-view/telemetry-injector/tree/dep
 
-GPMF is a video telemetry standard embedded as a track to MP4 videos.
+GPMF/CAMM is a video telemetry standard embedded as a track to MP4 videos.
+
+Before the telemetry needs to be adjuste to match framerate.
 
 By setting the framerate at a fixed 5 FPS (in the video track step) we totally ignore the actual time spacing between photos, but that doesn’t matter.
 
@@ -123,7 +139,7 @@ For example,
 * Image 3, original time = `2023-08-01T09:00:13.000` , modified time = `2023-08-01T09:00:00.400`
 * Image 4, original time = `2023-08-01T09:00:17.380` , modified time = `2023-08-01T09:00:00.600`
 
-Now that the times are corrected, the GPMF track can be created for the video.
+Now that the times are corrected, the GPMF or GPMD track can be created for the video.
 
 ###### Video file metadata
 
@@ -256,7 +272,15 @@ GOOGLE_APP_ID=
 python3 gopro2gsv.py
 ```
 
-* `--input_directory`: for timelapse photo mode, the path to the directory of `.jpg` images
+Timelapse photo mode:
+
+* `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
+* `--video_telemetry_format` (required): either `CAMM` or `GPMD`
+* `--nadir` (optional): a square nadir to be added to the images
+* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
+
+Video mode:
+
 * `--input_video`: for timelapse video mode, the path to the `.mp4` video
 * `--nadir` (optional): a square nadir to be added to the images
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
