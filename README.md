@@ -268,14 +268,7 @@ The local SQLite database is structured with two tables;
 
 ## Usage
 
-As a user you must set a config file to use certain features;
-
-```txt
-# required for GSV upload
-GOOGLE_CLIENT_KEY=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_APP_ID=
-```
+As a user you must set an `.env` file to use certain features. See `.env.sample` in the root of this repo for more info.
 
 ```shell
 python3 gopro2gsv.py
