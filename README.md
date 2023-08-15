@@ -6,7 +6,7 @@ The results of this work is published to either Google StreetView or Mapillary. 
 
 Both these tools accept video uploads containing either CAMM or GPMF telemetry tracks.
 
-To suport this workflow GoPro2GSV supports a photo and timelapse mode.
+To suport this workflow GoPro2GSV supports a;
 
 Photo mode:
 
@@ -18,7 +18,7 @@ Photo mode:
 
 Video mode:
 
-1. takes video (equirectangular) with GPMF data
+1. takes video (equirectangular) with GPMF data (can be any GoPro video type, inc. MAX TimeWarp or Fusion Timelapse)
 2. optionally adds a nadir to the resulting video
 3. stores output to local filesystem
 4. uploads video to GSV
@@ -281,20 +281,27 @@ GOOGLE_APP_ID=
 python3 gopro2gsv.py
 ```
 
-Timelapse photo mode:
+Timelapse photo to video mode:
 
 * `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
-* `--video_telemetry_format` (required): either `CAMM` or `GPMD`
-* `--nadir` (optional): a square nadir to be added to the images
+	* e.g. `/path/to/my/directory`
+* `--video_telemetry_format` (required)
+	* either `CAMM` or `GPMD`
+* `--path_to_nadir` (optional): a square nadir to be added to the images
+	* e.g. `/path/to/nadir.png`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-* `--output_name` (optional): name of video and directory for output
+* `--output_filepath` (optional): name of video and directory for output
+	* e.g. `/path/to/my/file-out.mp4`
 
-Video mode:
+Video to video mode:
 
-* `--input_video`: for timelapse video mode, the path to the `.mp4` video
-* `--nadir` (optional): a square nadir to be added to the images
+* `--input_video` (required): for timelapse video mode, the path to the `.mp4` video
+	* e.g. `/path/to/my/file-in.mp4`
+* `--path_to_nadir` (optional): a square nadir to be added to the images
+	* e.g. `/path/to/nadir.png`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-* `--output_name` (optional): name of video and directory for output
+* `--output_filepath` (optional): name of video and directory for output
+	* e.g. `/path/to/my/file-out.mp4`
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
