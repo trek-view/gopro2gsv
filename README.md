@@ -82,11 +82,11 @@ Let's break that down:
 * `-r 5`: the output framerate per second (always 5, explained below)
 * `-i %05d.jpg`: the filenames to match on. `%05d` means capture 5 digits.
 * `-c:v libx264` is an abbreviated version of codec:v. Encodes the video using the libx264 codec (H264).
-* `<DIRECTORY NAME>` is the directory name of the timelaps images
+* `<DIRECTORY NAME>` is the directory name of the timelapse images
 
 Note, this is purely for example purposes. The resulting video should be of the same quality as the input (so might need some more ffmpeg flags to be included).
 
-[According to many ad-hoc observations in various Google Street View groups](https://www.facebook.com/groups/366117726774216), Street View servers also appear to prefer shorter segments, often rejecting longer videos. Again, this is undocumented but I will play it safe and pack videos with a length not exceeding 60 seconds. 
+[According to many ad-hoc observations in various Google StreetView groups](https://www.facebook.com/groups/366117726774216), StreetView servers also appear to prefer shorter segments, often rejecting longer videos. Again, this is undocumented but I will play it safe and pack videos with a length not exceeding 60 seconds. 
 
 This means at a frame rate of 5 FPS (0.2 seconds per frame), each video will contain a maximum of 300 frames (60 * 5).
 
@@ -108,7 +108,7 @@ GPMF is a video telemetry standard embedded as a track to MP4 videos.
 
 By setting the framerate at a fixed 5 FPS (in the video track step) we totally ignore the actual time spacing between photos, but that doesn’t matter.
 
-The real time spacing between photos does not matter when it comes to Street View (e.g. Google does not really care if photo was taken at the time reported).
+The real time spacing between photos does not matter when it comes to StreetView (e.g. Google does not really care if photo was taken at the time reported).
 
 However, it does matter the time spacing between GPS points matches the time spacing between the frames in the video (so that the correct GPS position matches the correct frame).
 
@@ -152,7 +152,7 @@ python spatialmedia -i demo-video-no-meta.mp4 demo-video-with-meta.mp4
 
 ### Video -> video processing pipeline
 
-Processed GoPro MAX and Fusion videos can be directly uploaded to Street View.
+Processed GoPro MAX and Fusion videos can be directly uploaded to StreetView.
 
 However, there are many cases where user will want to add a nadir.
 
@@ -198,13 +198,32 @@ A simple walkthrough of the process is described here: https://www.trekview.org/
 
 The output video must match the input video for quality and for contained tracks (e.g. audio, telemetry, etc.).
 
+### Uploading to GSV
+
+The video can be uploaded using the GSV `photoSequence` endpoint where the `InputType` is `VIDEO`
+
+https://developers.google.com/streetview/publish/reference/rest/v1/photoSequence/create
+
+Note, the `rawGpsTimeline` does not need to be passed, as the video has this data embedded in it.
+
+### Checking GSV state
+
+Each upload goes through various processing states: https://developers.google.com/streetview/publish/reference/rest/v1/photoSequence/create#ProcessingState
+
+A `PROCESSED` response for `ProcessingState` indicates the video has been successfully published to StreetView. 
+
+A `FAILED` response means something went wrong, and the information is captured in `ProcessingFailureReason`.
+
+`PENDING` and `PROCESSING` state indicates the process is still ongoing. For uploads in this state, a user should be able to run an update request (`--refresh_streetview_status`) to update the DB with the latest remote changes, should there have been any progress.
+
 ## Outputs
 
 ### Files
 
-* `non-adjusted.gpx`: the GPX file created after validation
-* `adjusted.gpx`: the GPX file created from the final video
-* `<DIRECTORY NAME>.mp4`: the final video file
+* `<DIRECTORY NAME/VIDEO NAME>-non-adjusted.gpx`: the GPX file created after validation
+* `<DIRECTORY NAME/VIDEO NAME>-adjusted.gpx`: the GPX file created from the final video
+* `<DIRECTORY NAME/VIDEO NAME>.mp4`: the final video file
+* `<DIRECTORY NAME/VIDEO NAME>.log`: a log detailing a verbose breakdown of all processes
 
 ### Database
 
@@ -212,13 +231,39 @@ The local SQLite database is structured with two tables;
 
 * Video
 	* User settings
-	* Local path to output 
+	* Local path to output/logs
+	* StreetView info
 * Timelapse Images
 	* User settings
 	* Local path to output
+	* StreetView info
 * Photos (for photo input)
 	* Contains photo data for timelapse image input
-	* Key to Timelapse image
+	* Key to Timelapse images/logs
+
+## Usage
+
+As a user you must set a config file to use certain features;
+
+```txt
+# required for GSV upload
+GOOGLE_CLIENT_KEY=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_APP_ID=
+```
+
+```shell
+python3 gopro2gsv.py
+```
+
+* `--input_directory`: for timelapse photo mode, the path to the directory of `.jpg` images
+* `--input_video`: for timelapse video mode, the path to the `.mp4` video
+* `--nadir` (optional): a square nadir to be added to the images
+* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
+
+The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
+
+* `--refresh_streetview_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
 
 ## License
 
