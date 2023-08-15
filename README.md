@@ -236,10 +236,19 @@ A `FAILED` response means something went wrong, and the information is captured 
 
 ### Files
 
-* `<DIRECTORY NAME/VIDEO NAME>-non-adjusted.gpx`: the GPX file created after validation
-* `<DIRECTORY NAME/VIDEO NAME>-adjusted.gpx`: the GPX file created from the final video
-* `<DIRECTORY NAME/VIDEO NAME>.mp4`: the final video file
-* `<DIRECTORY NAME/VIDEO NAME>.log`: a log detailing a verbose breakdown of all processes
+* `<DIRECTORY NAME>`
+	* `<DIRECTORY NAME/VIDEO NAME>-non-adjusted.gpx`: the GPX file created after validation
+	* `<DIRECTORY NAME/VIDEO NAME>-adjusted.gpx`: the GPX file created from the final video
+	* `<DIRECTORY NAME/VIDEO NAME>.mp4`: the final video file
+	* `<DIRECTORY NAME/VIDEO NAME>.log`: a log detailing a breakdown of script run
+
+### Logging
+
+We should implement verbose logging for each run so that this can be used for debugging.
+
+### Errors
+
+All errors should be captured nicely showing clear error messages to users.
 
 ### Database
 
@@ -278,12 +287,14 @@ Timelapse photo mode:
 * `--video_telemetry_format` (required): either `CAMM` or `GPMD`
 * `--nadir` (optional): a square nadir to be added to the images
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
+* `--output_name` (optional): name of video and directory for output
 
 Video mode:
 
 * `--input_video`: for timelapse video mode, the path to the `.mp4` video
 * `--nadir` (optional): a square nadir to be added to the images
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
+* `--output_name` (optional): name of video and directory for output
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
