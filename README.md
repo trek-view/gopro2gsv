@@ -18,7 +18,7 @@ Photo mode:
 
 Video mode:
 
-1. takes video (equirectangular) with GPMF data (can be any GoPro video type, inc. MAX TimeWarp or Fusion Timelapse)
+1. takes video (equirectangular) with GPMF data
 2. optionally adds a nadir to the resulting video
 3. stores output to local filesystem
 4. uploads video to GSV
@@ -29,6 +29,7 @@ GoPro2GSV only officially supports GoPro Fusion and GoPro MAX cameras where the 
 ## READ BEFORE YOU BEGIN
 
 * this script does not work with unprocessed files from Fusion or MAX cameras. gopro2frames will take GoPro Fusion dual fisheye images, GoPro Fusion dual fisheye videos, or GoPro MAX 360 videos and convert them into equirectangular image frames that can be uploaded using photo mode, see: https://github.com/trek-view/gopro2frames
+* this script is not suitable for videos shot 
 
 ## Inputs
 
@@ -234,7 +235,7 @@ A `PROCESSED` response for `ProcessingState` indicates the video has been succes
 
 A `FAILED` response means something went wrong, and the information is captured in `ProcessingFailureReason`.
 
-`PENDING` and `PROCESSING` state indicates the process is still ongoing. For uploads in this state, a user should be able to run an update request (`--refresh_streetview_status`) to update the DB with the latest remote changes, should there have been any progress.
+`PENDING` and `PROCESSING` state indicates the process is still ongoing. For uploads in this state, a user should be able to run an update request to update the DB with the latest remote changes, should there have been any progress.
 
 ## Outputs
 
@@ -302,7 +303,7 @@ Video to video mode:
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
-* `--refresh_streetview_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
+* `--refresh_upload_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
 
 ## License
 
