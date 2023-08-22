@@ -18,7 +18,7 @@ Photo mode:
 
 Video mode:
 
-1. takes video (equirectangular) with GPMF data (can be any GoPro video type, inc. MAX TimeWarp or Fusion Timelapse)
+1. takes video (equirectangular) with GPMF data
 2. optionally adds a nadir to the resulting video
 3. stores output to local filesystem
 4. uploads video to GSV
@@ -29,6 +29,7 @@ GoPro2GSV only officially supports GoPro Fusion and GoPro MAX cameras where the 
 ## READ BEFORE YOU BEGIN
 
 * this script does not work with unprocessed files from Fusion or MAX cameras. gopro2frames will take GoPro Fusion dual fisheye images, GoPro Fusion dual fisheye videos, or GoPro MAX 360 videos and convert them into equirectangular image frames that can be uploaded using photo mode, see: https://github.com/trek-view/gopro2frames
+* this script is not suitable for videos shot 
 
 ## Inputs
 
@@ -182,6 +183,8 @@ As such, user can enter GoPro videos to GoPro2GSV. They will be outputted with a
 
 GoPro2GSV validates the video input before processing.
 
+The file must be type mp4. See gopro2frames for preprocessing dual fisheye .mp4s (Fusion) or .360's (MAX) for used with gopro2gsv.
+
 It does this by checking each images metadata as follows;
 
 * `Main:ProjectionType` is `equirectangular`
@@ -234,17 +237,18 @@ A `PROCESSED` response for `ProcessingState` indicates the video has been succes
 
 A `FAILED` response means something went wrong, and the information is captured in `ProcessingFailureReason`.
 
-`PENDING` and `PROCESSING` state indicates the process is still ongoing. For uploads in this state, a user should be able to run an update request (`--refresh_streetview_status`) to update the DB with the latest remote changes, should there have been any progress.
+`PENDING` and `PROCESSING` state indicates the process is still ongoing. For uploads in this state, a user should be able to run an update request to update the DB with the latest remote changes, should there have been any progress.
 
 ## Outputs
 
 ### Files
 
 * `<DIRECTORY NAME>`
-	* `<DIRECTORY NAME/VIDEO NAME>-non-adjusted.gpx`: the GPX file created after validation
-	* `<DIRECTORY NAME/VIDEO NAME>-adjusted.gpx`: the GPX file created from the final video
-	* `<DIRECTORY NAME/VIDEO NAME>.mp4`: the final video file
-	* `<DIRECTORY NAME/VIDEO NAME>.log`: a log detailing a breakdown of script run
+	* `<DIRECTORY NAME/VIDEO NAME>-<N>.gpx`: the GPX file created from the final video
+	* `<DIRECTORY NAME/VIDEO NAME>-<N>.mp4`: the final video file
+	* `<DIRECTORY NAME/VIDEO NAME>-<N>.log`: a log detailing a breakdown of script run
+
+Note, in the case of image inputs where more than one video is created (as more than 300 frames entered), there will be multiple `.gpx`, `.mp4`, and `.log` files. `-<N>` is the count of these files, starting at `1`, e.g. `my_directory_name-1.gpx`, `my_directory_name-1.mp4`, `my_directory_name-1.log`, `my_directory_name-2.gpx`, etc.
 
 ### Logging
 
@@ -302,7 +306,7 @@ Video to video mode:
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
-* `--refresh_streetview_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
+* `--refresh_upload_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
 
 ## License
 
