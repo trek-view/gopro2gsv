@@ -1,0 +1,2 @@
+-i https://pypi.org/simple
+gpxpy==1.5.0

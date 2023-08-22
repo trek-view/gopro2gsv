@@ -1,0 +1,3 @@
+[submodule "src/third-party/telemetry-injector"]
+	path = src/third-party/telemetry-injector
+	url = https://github.com/trek-view/telemetry-injector.git

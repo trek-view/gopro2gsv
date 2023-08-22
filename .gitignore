@@ -2,3 +2,4 @@
 tests_for_development/
 .DS_Store
 .env
+__pycache__/
