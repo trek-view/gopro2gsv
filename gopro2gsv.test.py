@@ -9,3 +9,10 @@ args, is_photo_mode = (SimpleNamespace(input_video=None, input_directory=pathlib
 # args, is_photo_mode = (SimpleNamespace(input_video=pathlib.PosixPath('/home/fqrious/tmp/fus/fuslie-0.mp4'), path_to_nadir=None, output_filepath="/home/fqrious/tmp/fus/fuslie", upload_to_streetview=False), False)
 
 main(args, is_photo_mode)
+
+
+if __name__ == '__main__':
+    video = Path('/home/fqrious/tmp/fus/fuslie-0_watermarked.mp4')
+    gsv = GSV('703153271591-lusbgebq1r5iop5ukl1ahkldcvc5smjh.apps.googleusercontent.com', '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')
+    # print("upload url:", gsv.get_upload_url())
+    print(gsv.upload_video(video))

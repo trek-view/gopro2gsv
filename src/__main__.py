@@ -1,24 +1,19 @@
-import argparse, pathlib, shutil
+import argparse
+import functools
+import os
+import pathlib
 from math import ceil
 from pathlib import Path
-import functools
-import re
-
-from .shell_helper import test_image, InvalidImageException, generate_gpx_from_timelapse, generate_gpx_from_images, create_video_from_images, make_video_gsv_compatible, copy_metadata_from_file, get_exif_details, overlay_nadir
-from types import SimpleNamespace
-from datetime import datetime, timedelta
-from dateutil.parser import parse as parse_date
 
 from .imagetool import get_valid_images, write_images_to_dir
+from .shell_helper import (copy_metadata_from_file, create_video_from_images,
+                           generate_gpx_from_images, get_exif_details,
+                           make_video_gsv_compatible, overlay_nadir,
+                           get_streams)
+from .gsv import GSV
+from .errors import FatalException
+from dotenv import load_dotenv
 
-
-import os
-
-def strip_extension(filename):
-    return os.path.splitext(filename)[0]
-
-class FatalException(Exception):
-    pass
 
 def parse_path(parser, path, is_file=True):
     p = pathlib.Path(path)
@@ -58,9 +53,17 @@ def parse_args():
     return args, is_photo_mode
 
 
-
 def main(args, is_photo_mode):
     videos: list[tuple[Path, int, int]] = []
+    #init gsv if 
+    if args.upload_to_streetview:
+        secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        client_id = os.getenv("GOOGLE_APP_ID")
+        key = os.getenv("GOOGLE_CLIENT_KEY")
+        if not key or not client_id or not secret:
+            raise FatalException("--upload_to_streetview passed but `GOOGLE_APP_ID` or `GOOGLE_CLIENT_SECRET` not found in env")
+        gsv = GSV(client_id, secret)
+
     if is_photo_mode:
         input_dir : pathlib.Path = args.input_directory
         if not args.output_filepath:
@@ -90,8 +93,11 @@ def main(args, is_photo_mode):
     else:
         input_vid : Path = args.input_video
         if not args.output_filepath:
-            name = strip_extension(input_vid.name)
+            name, _ = os.path.splitext(input_vid.name)
             args.output_filepath = input_vid.with_name(f"{name}-gopro2gsv_output")
+        streams = get_streams(input_vid)
+        if len(list(filter(lambda x: x.type == "video", streams))) > 1:
+            raise FatalException("More than one video stream in input_video")
         metadata = get_exif_details(input_vid)
         valid_frames = 0
         for k, v in metadata.items():
@@ -101,7 +107,7 @@ def main(args, is_photo_mode):
             raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
         videos.append((input_vid, int(metadata['Track1:ImageWidth'][0]), int(metadata['Track1:ImageHeight'][0])))
     for video, width, height in videos:
-        name = strip_extension(video.name)
+        name, _ = os.path.splitext(video.name)
         newpath = video
         if args.path_to_nadir:
             newpath = video.with_name(f"{name}_with-nadir.mp4")
@@ -109,6 +115,11 @@ def main(args, is_photo_mode):
         elif args.watermark:
             newpath = video.with_name(f"{name}_watermarked.mp4")
             overlay_nadir(video, args.watermark, newpath, width, height, True)
+        if args.upload_to_streetview:
+            resp, sid = gsv.upload_video(newpath)
+            print(f"[SUCCESS] Sequence uploaded for {newpath}! Sequence id: {sid}")
+
 if __name__ == "__main__":
+    load_dotenv()
     args, is_photo_mode = parse_args()
     main(args, is_photo_mode)

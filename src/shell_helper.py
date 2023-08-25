@@ -1,6 +1,7 @@
+from types import SimpleNamespace
 from xml.dom.minidom import parseString, Element, Document
 from pathlib import Path
-import subprocess, sys
+import subprocess, sys, re
 from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 
 import importlib.resources
@@ -18,13 +19,18 @@ class InvalidImageException(Exception):
 from datetime import timedelta, datetime
 
 
-def run_command_silently(cmd, **kw):
+STREAM_RE = re.compile(r"Stream (#\d+:\d+)\[\w+\]\(\w+\):\s+(\w+):\s+(\w+)\s+(.*)")
+
+
+def run_command_silently(cmd, raise_for_status=True, **kw):
     try:
         output = subprocess.check_output(cmd, encoding='utf-8', **kw)
         return output.strip()
     except subprocess.CalledProcessError as e:
         error_message = e.output.strip()
-        raise RuntimeError(f"Error running command '{cmd}': {error_message}")
+        if raise_for_status:
+            raise RuntimeError(f"Error running command '{cmd}': {error_message}")
+        return error_message
 
 
 def getText(nodelist):
@@ -146,9 +152,18 @@ def overlay_nadir(video, overlay, output, video_width, video_height, is_watermar
         overlay_height = f"h=ih*{video_height}/{video_width}"
         overlay_offset = f"{video_width-overlay_width}:0"
     # do_overlay(video, overlay, output, overlay_width, overlay_height, overlay_offset)
-    run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f"[1:v]scale={overlay_width}:{overlay_height}[overlay]; [0:v][overlay]overlay={overlay_offset}", "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-tag:2", "gpmd", "-y", output], stderr=subprocess.STDOUT)
+    run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f"[1:v]scale={overlay_width}:{overlay_height}[overlay]; [0:v][overlay]overlay={overlay_offset}", "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
     copy_metadata_from_file(video, output)
 
+def get_streams(video: Path):
+    output  = run_command_silently([get_ffmpeg(), "-i", video], stderr=subprocess.STDOUT, raise_for_status=False)
+    streams  = []
+    for stream in STREAM_RE.findall(output):
+        streams.append(SimpleNamespace(id=stream[0], type=stream[1].lower(), codec=stream[2], misc=stream[3]))
+    return streams
+
+def parse_stream(stream: str):
+    pass
     # run_command_silently([get_ffmpeg(), "-i", video, "-i", nadir, "-filter_complex", f"[0:v][1:v] overlay={nadir_offset}", "-copy_unknown", "-map_metadata", "0", "-y", output])
 # print(test_image("/home/fqrious/tmp/fus-360-pho-002s6/MULTISHOT_0035_000000-2k.jpg"))
 
