@@ -6,6 +6,10 @@ from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 
 import importlib.resources
 
+from .errors import FatalException
+
+from logging import getLogger
+logger = getLogger(__name__)
 
 DEFAULT_FRAME_RATE = 5
 
@@ -87,7 +91,7 @@ def test_image(path):
 
 def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
     if not dir.exists():
-        raise RuntimeError("Attempted to generate gpx from non-existent timelapse directory")
+        raise FatalException("Attempted to generate gpx from non-existent timelapse directory")
     output = run_command_silently([get_exiftool(), "-fileOrder", "gpsdatetime", "-p", ASSETS_PATH/"gpx.fmt", dir], stderr=subprocess.DEVNULL)
     with gpx_path.open("w") as f:
         f.write(output)

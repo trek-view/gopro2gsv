@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
 
+from logging import getLogger
+logger = getLogger(__name__)
 
 MAX_RE = re.compile(r"(\w{4}).*.jpg")
 FUSION_RE = re.compile(r"multishot_(\d{4})_.*.jpg")
@@ -43,7 +45,7 @@ def get_valid_images(input_dir: Path) -> list[dict]:
             if name.startswith("."):
                 continue
             if f.is_dir() or not name.endswith(".jpg"):
-                raise InvalidImageException(f"unidentiified file `{f.name}` in input_directory")
+                raise InvalidImageException(f"unidentiified file `{f.name}` in {input_dir.absolute()}")
 
             camera, prefix = get_camera_attr_from_name(name)
             if global_camera == None: # first image
@@ -58,13 +60,13 @@ def get_valid_images(input_dir: Path) -> list[dict]:
             if not global_width: # first iteration
                 global_width = width
             if width != global_width:
-                raise Exception(f"Image width does not match: {width} != {global_width}")
+                raise InvalidImageException(f"Image width does not match for {name}: {width} != {global_width}")
 
             metadata["date"] = date
             metadata["path"] = f
             images.append(metadata)
         except InvalidImageException as e:
-            print("Error:", e)
+            logger.debug(e)
 
     images.sort(key=lambda v: (v["date"], v["path"]))
 
@@ -77,7 +79,7 @@ def get_valid_images(input_dir: Path) -> list[dict]:
         name = path.name
         if (delta := date - prev_date) > timedelta(seconds=60):
             images.pop(i)
-            raise InvalidImageException(f"image `{name}` is {delta.seconds} (>60) away from the preceding image")
+            logger.debug(f"removing `{name}`: more than 60s time difference ({delta.seconds})")
     return images
 
 def write_images_to_dir(images: list[dict], dir: Path, images_per_video=300):
