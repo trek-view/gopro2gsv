@@ -99,7 +99,7 @@ def main(args, is_photo_mode):
         secret = os.getenv("GOOGLE_CLIENT_SECRET")
         client_id = os.getenv("GOOGLE_APP_ID")
         key = os.getenv("GOOGLE_CLIENT_KEY")
-        if not key or not client_id or not secret:
+        if not client_id or not secret:
             raise FatalException("--upload_to_streetview passed but `GOOGLE_APP_ID` or `GOOGLE_CLIENT_SECRET` not found in env")
         creds = database.get_gsv_auth()
         if args.force_relogin:
