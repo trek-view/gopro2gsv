@@ -53,7 +53,7 @@ class DB:
                     id INTEGER PRIMARY KEY,
                     cmdline TEXT,
                     input_path TEXT,
-                    final_path TEXT
+                    final_path TEXT,
                     log_path TEXT,
                     streetview_info TEXT
                 )

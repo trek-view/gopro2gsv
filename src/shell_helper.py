@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from xml.dom.minidom import parseString, Element, Document
 from pathlib import Path
-import subprocess, sys, re
+import subprocess, sys, re, os
 from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 
 import importlib.resources
@@ -138,14 +138,14 @@ def copy_metadata_from_file(frame: Path, video: Path):
 
 def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, is_gpmd: bool):
     type_flag = "-g" if is_gpmd else "-c"
-    run_command_silently([sys.executable, SUBMODULES/"telemetry-injector/telemetry-injector.py", type_flag, "-v", video, "-x", gpx, "-o", output])
+    run_command_silently([sys.executable, MODULE_PATH/"telemetry_injector/telemetry-injector.py", type_flag, "-v", video, "-x", gpx, "-o", output])
     return
 
 def get_ffmpeg():
-    return 'ffmpeg'
+    return os.environ.get("FFMPEG_PATH") or 'ffmpeg'
 
 def get_exiftool():
-    return 'exiftool'
+    return os.environ.get("EXIFTOOL_PATH") or 'exiftool'
 
 def overlay_nadir(video, overlay, output, video_width, video_height, is_watermark=False):
     overlay_height = int(0.15 * video_height)
