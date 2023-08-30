@@ -276,6 +276,23 @@ The local SQLite database is structured with two tables;
 
 ## Usage
 
+### Setup
+
+Install the required dependencies using:
+
+```shell
+# clone the latest code
+git clone https://github.com/trek-view/gopro2gsv
+cd gopro2gsv
+# create a venv
+python3 -m venv gopro2gsv-venv
+source gopro2gsv-venv/bin/activate
+# install requirements
+pip3 install -r requirements.txt
+```
+
+### Run
+
 As a user you must set an `.env` file to use certain features. See `.env.sample` in the root of this repo for more info.
 
 ```shell
