@@ -6,6 +6,7 @@ from .shell_helper import test_image, InvalidImageException
 from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
+from collections import UserDict
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -17,6 +18,17 @@ CAMERAS_RE = {
     "fusion": re.compile(r"(\w{4}).*.jpg"),
     "max": re.compile(r"multishot_(\d{4})_.*.jpg"),
 }
+
+
+class metadata_dict(UserDict):
+    def __getitem__(self, key) -> str:
+        value = super().__getitem__(key)
+        if isinstance(value, list):
+            return value[0]
+        return value
+    
+    def list(self, key):
+        return super().__getitem__(key)
 
 def get_camera_attr_from_name(name) -> tuple[str, str]:
     for camera, re_exp in CAMERAS_RE.items():
@@ -54,7 +66,7 @@ def get_valid_images(input_dir: Path) -> list[dict]:
             if camera != global_camera or prefix != global_prefix:
                 raise InvalidImageException(f"filename `{f.name}` does not match pattern")
 
-            metadata = test_image(str(f))
+            metadata = metadata_dict(test_image(str(f)))
             width, date = parse_date_and_width_from_exif(metadata)
 
             if not global_width: # first iteration

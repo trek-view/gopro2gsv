@@ -78,12 +78,6 @@ def parse_args():
 
     return args, is_photo_mode
 
-def get_metadata_item(metadata: list|str, key):
-    value = metadata[key]
-    if isinstance(value, list):
-        return value[0]
-    return value
-
 
 def main(args, is_photo_mode):
     videos: list[tuple[Path, int, int, dict|list[dict]]] = []
@@ -141,7 +135,7 @@ def main(args, is_photo_mode):
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=args.video_telemetry_format == "GPMD")
             logger.info(f"copying metadata from first image into {final_mp4_file}")
             copy_metadata_from_file(first_image['newpath'], final_mp4_file)
-            videos.append((final_mp4_file, int(get_metadata_item(first_image, "File:ImageWidth")), int(get_metadata_item(first_image, "File:ImageHeight")), images[start:end]))
+            videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), images[start:end]))
     else:
         input_vid : Path = args.input_video
         if not args.output_filepath:
@@ -159,7 +153,7 @@ def main(args, is_photo_mode):
                 valid_frames += len(v)
         if valid_frames < 10:
             raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
-        width, height = int(get_metadata_item(metadata, 'Track1:ImageWidth')), int(get_metadata_item(metadata, 'Track1:ImageHeight'))
+        width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
         logger.info(f"Found {width}x{height} video with {valid_frames} valid frames at {input_vid}")
         videos.append((input_vid, width, height, metadata))
     
