@@ -170,3 +170,4 @@ cython_debug/
 # venv in readme
 
 gopro2gsv-venv
+tests
