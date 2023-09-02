@@ -152,7 +152,7 @@ def get_gpx_data(gpx_file):
                         'data': 1.0
                     })
                     
-                    device = b'Trek View Telemetry Injector'
+                    device = b'gopro2gsv'
                     dvnm = Gpmf()
                     dvnm.key = b'DVNM'
                     dvnm.type = ord('c')

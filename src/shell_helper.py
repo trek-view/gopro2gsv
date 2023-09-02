@@ -157,11 +157,11 @@ def get_magick():
     return os.environ.get("MAGICK_PATH") or 'magick'
 
 def overlay_nadir(video, overlay, output, video_width, video_height, is_watermark=False):
-    overlay_height = int(0.15 * video_height)
+    overlay_height = int(0.25 * video_height)
     overlay_width = video_width
     overlay_offset = f"0:{video_height-overlay_height}"
     if is_watermark:
-        overlay_width = int(0.15*video_width)
+        overlay_width = int(0.25*video_width)
         overlay_height = f"h=ih*{video_height}/{video_width}"
         overlay_offset = f"{video_width-overlay_width}:0"
     else:
