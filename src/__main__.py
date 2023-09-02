@@ -20,12 +20,12 @@ import logging
 
 def newLogger(name: str) -> logging.Logger:
     # Configure logging
+    stream_handler = logging.StreamHandler()  # Log to stdout and stderr
+    stream_handler.setLevel(logging.INFO)
     logging.basicConfig(
         level=logging.DEBUG,  # Set the desired logging level
         format=f"%(asctime)s [{name}] [%(levelname)s] %(message)s",
-        handlers=[
-            logging.StreamHandler(),  # Log to stdout and stderr
-        ],
+        handlers=[stream_handler],
         datefmt='%d-%b-%y %H:%M:%S'
     )
 
@@ -35,6 +35,7 @@ def setLogFile(logger, file: Path):
     logger.info(f"Saving log to `{file.absolute()}`")
     handler = logging.FileHandler(file)
     handler.formatter = logging.Formatter(fmt='%(levelname)s %(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
     logger.info("=====================GoPro2GSV======================")
 
@@ -145,6 +146,8 @@ def main(args, is_photo_mode):
             output_filepath = Path(args.output_filepath)
         output_filename, _ = os.path.splitext(output_filepath.name)
         log_filepath    = output_filepath.with_name(output_filename+".log")
+        setLogFile(logger, log_filepath)
+
         streams = get_streams(input_vid)
         if len(list(filter(lambda x: x.type == "video", streams))) > 1:
             raise FatalException("More than one video stream in input_video")

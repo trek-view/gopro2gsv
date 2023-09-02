@@ -78,7 +78,7 @@ def get_valid_images(input_dir: Path) -> list[dict]:
             metadata["path"] = f
             images.append(metadata)
         except InvalidImageException as e:
-            logger.debug(e)
+            logger.warn(e)
 
     images.sort(key=lambda v: (v["date"], v["path"]))
 
@@ -91,7 +91,7 @@ def get_valid_images(input_dir: Path) -> list[dict]:
         name = path.name
         if (delta := date - prev_date) > timedelta(seconds=60):
             images.pop(i)
-            logger.debug(f"removing `{name}`: more than 60s time difference ({delta.seconds})")
+            logger.warn(f"More than 60 seconds between two succeeding frames: [{name}|{delta.seconds} seconds]... removed")
     return images
 
 def write_images_to_dir(images: list[dict], dir: Path, images_per_video=300):

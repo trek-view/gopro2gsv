@@ -3,7 +3,8 @@ from xml.dom.minidom import parseString, Element, Document
 from pathlib import Path
 import subprocess, sys, re, os
 from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
-
+from io import BytesIO
+import tempfile
 import importlib.resources
 
 from .errors import FatalException
@@ -26,8 +27,13 @@ from datetime import timedelta, datetime
 STREAM_RE = re.compile(r"Stream (#\d+:\d+)\[\w+\]\(\w+\):\s+(\w+):\s+(\w+)\s+(.*)")
 
 
-def run_command_silently(cmd, raise_for_status=True, **kw):
+def run_command_silently(cmd, decode_output=True, raise_for_status=True, **kw):
+    cmd = list(map(str, cmd))
     try:
+
+        logger.debug(f"Running Command:\t" + " ".join(map(repr, cmd)))
+        if not decode_output:
+            return subprocess.check_output(cmd, universal_newlines=True, **kw)
         output = subprocess.check_output(cmd, encoding='utf-8', **kw)
         return output.strip()
     except subprocess.CalledProcessError as e:
@@ -147,6 +153,9 @@ def get_ffmpeg():
 def get_exiftool():
     return os.environ.get("EXIFTOOL_PATH") or 'exiftool'
 
+def get_magick():
+    return os.environ.get("MAGICK_PATH") or 'magick'
+
 def overlay_nadir(video, overlay, output, video_width, video_height, is_watermark=False):
     overlay_height = int(0.15 * video_height)
     overlay_width = video_width
@@ -155,8 +164,15 @@ def overlay_nadir(video, overlay, output, video_width, video_height, is_watermar
         overlay_width = int(0.15*video_width)
         overlay_height = f"h=ih*{video_height}/{video_width}"
         overlay_offset = f"{video_width-overlay_width}:0"
+    else:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            logger.debug(f"Pre-processing nadir at {f.name}")
+            run_command_silently([get_magick(), "convert", overlay, "-rotate", 180, "-distort", "depolar", 0, "-flip", "-flop", f.name])
+            overlay = f.name
+
+    run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f'[1:v]scale={overlay_width}:{overlay_height}[overlay]; [0:v][overlay]overlay={overlay_offset}', "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
     # do_overlay(video, overlay, output, overlay_width, overlay_height, overlay_offset)
-    run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f"[1:v]scale={overlay_width}:{overlay_height}[overlay]; [0:v][overlay]overlay={overlay_offset}", "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
+    # run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f'[1:v]scale={overlay_width}:{overlay_height}[ovl]; [ovl]v360=gnomonic:equirect[overlay]; [0:v][overlay]overlay={overlay_offset}', "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
     copy_metadata_from_file(video, output)
 
 def get_streams(video: Path):
@@ -173,3 +189,6 @@ def parse_stream(stream: str):
 
 # def do_overlay(video, overlay, output, overlay_width, overlay_height, overlay_offset):
     
+if __name__ == "__main__":
+    out = run_command_silently(["magick", "convert", "./stock_nadirs/trek-view-circle-nadir.png", "-rotate", 180, "-distort", "depolar", 0, "-flip", "-flop", "-"], decode_output=False)
+    print(type(out), len(out))
