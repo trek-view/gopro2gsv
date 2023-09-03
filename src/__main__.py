@@ -6,11 +6,11 @@ from math import ceil
 from pathlib import Path
 import typing
 
-from .imagetool import get_valid_images, write_images_to_dir
+from .imagetool import get_files_from_dir, write_images_to_dir
 from .shell_helper import (copy_metadata_from_file, create_video_from_images,
                            generate_gpx_from_images, get_exif_details,
                            make_video_gsv_compatible, overlay_nadir,
-                           get_streams)
+                           get_streams, delete_files)
 from .gsv import GSV
 from .sql_helper import DB
 from .errors import FatalException
@@ -29,11 +29,11 @@ def newLogger(name: str) -> logging.Logger:
         datefmt='%d-%b-%y %H:%M:%S'
     )
 
-    return logging.getLogger(__name__)
+    return logging.getLogger("gopro2gsv")
 
 def setLogFile(logger, file: Path):
     logger.info(f"Saving log to `{file.absolute()}`")
-    handler = logging.FileHandler(file)
+    handler = logging.FileHandler(file, "w")
     handler.formatter = logging.Formatter(fmt='%(levelname)s %(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
@@ -59,10 +59,7 @@ def parse_args():
 
     parser.add_argument("--video_telemetry_format", choices=["CAMM", "GPMD", "camm", "gpmd"], help="Video telemetry format (CAMM or GPMD)", type=str.upper)
 
-    group = parser.add_mutually_exclusive_group(required=False)
-
-    group.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
-    group.add_argument("--watermark", help="Path to watermark", type=functools.partial(parse_path, parser, is_file=True))
+    parser.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
 
     parser.add_argument("--output_filepath", help="Output filepath for video")
     parser.add_argument("--upload_to_streetview", action="store_true", help="Upload image to StreetView")
@@ -111,12 +108,13 @@ def main(args, is_photo_mode):
         output_filename = output_filepath.name
         log_filepath    = output_filepath.with_name(output_filename+".log")
         setLogFile(logger, log_filepath)
-        images = get_valid_images(input_dir)
+        valid_images, invalid_files = get_files_from_dir(input_dir)
         processed_dir = output_filepath
         # gpx_file = input_dir/"processed.gpx"
-        logger.info(f"Copying {len(images)} images to new directory: {processed_dir.absolute()}")
-        write_images_to_dir(images, processed_dir)
-        number_of_images = len(images)
+        database.record_timelapse(invalid_files)
+        logger.info(f"Copying {len(valid_images)} images to new directory: {processed_dir.absolute()}")
+        write_images_to_dir(valid_images, processed_dir)
+        number_of_images = len(valid_images)
         images_per_video = 300
         images_per_video = min(images_per_video, number_of_images//ceil(number_of_images/images_per_video)) #make it such that there's the same or close to the same number of images per video
         parts = ceil(number_of_images/images_per_video)
@@ -127,16 +125,17 @@ def main(args, is_photo_mode):
             gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
             mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
             final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")
-            first_image = images[start]
+            first_image = valid_images[start]
             logger.info(f"generating gpx file for video #{i} at {gpx_file}")
-            generate_gpx_from_images(images[start:end], gpx_file)
+            generate_gpx_from_images(valid_images[start:end], gpx_file)
             logger.info(f"generating video #{i} at {mp4_file}")
             create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, start, images_per_video, frame_rate=5)
             logger.info(f"adding {args.video_telemetry_format} data stream to video #{i} at {final_mp4_file}")
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=args.video_telemetry_format == "GPMD")
             logger.info(f"copying metadata from first image into {final_mp4_file}")
             copy_metadata_from_file(first_image['newpath'], final_mp4_file)
-            videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), images[start:end], final_mp4_file))
+            delete_files(mp4_file)
+            videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[start:end], gpx_file=str(gpx_file)), final_mp4_file))
     else:
         input_vid : Path = args.input_video
         if not args.output_filepath:
@@ -171,18 +170,18 @@ def main(args, is_photo_mode):
             newpath = output_path.with_name(f"{name}_with-nadir.mp4")
             newpath.parent.mkdir(exist_ok=True, parents=True)
             overlay_nadir(video, args.path_to_nadir, newpath, width, height)
-        elif args.watermark:
-            logger.info("Adding watermark to video")
-            newpath = output_path.with_name(f"{name}_watermarked.mp4")
-            newpath.parent.mkdir(exist_ok=True, parents=True)
-            overlay_nadir(video, args.watermark, newpath, width, height, True)
+        
+        # delete input video file if it's created by us
+        if more.get('gpx_file') and video != newpath:
+            delete_files(video)
+
         if args.upload_to_streetview:
             logger.info(f"Uploading `{newpath}` to GSV")
             resp, streetview_id = gsv.upload_video(newpath)
             logger.info(f"[SUCCESS] Sequence uploaded for {newpath}! Sequence id: {streetview_id}")
 
         if is_photo_mode:
-            database.insert_output(args.input_directory.absolute(), newpath, log_filepath, streetview_info=streetview_id, is_photo_mode=True, images=more)
+            database.insert_output(args.input_directory.absolute(), newpath, log_filepath, streetview_info=streetview_id, is_photo_mode=True, video_info=more)
         else:
             database.insert_output(args.input_video.absolute(), newpath, log_filepath, streetview_info=streetview_id, is_photo_mode=False)
 

@@ -9,7 +9,7 @@ from math import ceil
 from collections import UserDict
 
 from logging import getLogger
-logger = getLogger(__name__)
+logger = getLogger("gopro2gsv.image_tool")
 
 MAX_RE = re.compile(r"(\w{4}).*.jpg")
 FUSION_RE = re.compile(r"multishot_(\d{4})_.*.jpg")
@@ -42,22 +42,26 @@ def parse_date_and_width_from_exif(exif_data: dict[str, str]) -> tuple[int, date
     raw_width = int(exif_data["File:ImageWidth"])
     return raw_width, parse_date(raw__date)
 
-def get_valid_images(input_dir: Path) -> list[dict]:
+def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
     files: list[pathlib.Path] = tuple(input_dir.iterdir())
     global_camera: bool = None
     global_prefix: str = None
     global_width: str = None
     prev_date: datetime = None
 
-    images = []
+    invalid_files = []
+    valid_images = []
 
     for f in files:
+        metadata = metadata_dict()
         try:
             name = f.name.lower()
             if name.startswith("."):
                 continue
-            if f.is_dir() or not name.endswith(".jpg"):
-                raise InvalidImageException(f"unidentiified file `{f.name}` in {input_dir.absolute()}")
+            if f.is_dir():
+                raise InvalidImageException(f"unidentiified file: `{f.name}` file is a directory")
+            if not name.endswith(".jpg"):
+                raise InvalidImageException(f"unidentiified file: `{f.name}` is not an image file")
 
             camera, prefix = get_camera_attr_from_name(name)
             if global_camera == None: # first image
@@ -75,24 +79,29 @@ def get_valid_images(input_dir: Path) -> list[dict]:
                 raise InvalidImageException(f"Image width does not match for {name}: {width} != {global_width}")
 
             metadata["date"] = date
-            metadata["path"] = f
-            images.append(metadata)
+            valid_images.append(metadata)
         except InvalidImageException as e:
+            metadata["error"] = str(e)
+            invalid_files.append(metadata)
             logger.warn(e)
 
-    images.sort(key=lambda v: (v["date"], v["path"]))
+        # set path for file
+        metadata["path"] = f 
+        
 
-    prev_date = images[0]["date"]
+    valid_images.sort(key=lambda v: (v["date"], v["path"]))
+
+    prev_date = valid_images[0]["date"]
     workdir = input_dir/"processed"
     workdir.mkdir(exist_ok=True) # don't throw if folder already exist
-    for i, image in enumerate(images):
+    for i, image in enumerate(valid_images):
         date = image["date"]
         path: pathlib.Path = image["path"]
         name = path.name
         if (delta := date - prev_date) > timedelta(seconds=60):
-            images.pop(i)
+            valid_images.pop(i)
             logger.warn(f"More than 60 seconds between two succeeding frames: [{name}|{delta.seconds} seconds]... removed")
-    return images
+    return valid_images, invalid_files
 
 def write_images_to_dir(images: list[dict], dir: Path, images_per_video=300):
     dir.mkdir(exist_ok=True)

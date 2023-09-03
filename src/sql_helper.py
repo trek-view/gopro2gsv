@@ -13,6 +13,16 @@ def json_serialize(obj):
         return str(obj)
     return str(obj)
 
+
+def get_timelapse_tuple(pk, meta:dict) -> tuple:
+    return (
+        pk,
+        json.dumps(meta, default=json_serialize), #photo_data
+        str(meta['path']),
+        str(meta.get('newpath', "")) or None,
+        meta.get('error'),
+    )
+
 class DB:
     db_path : Path
     def __init__(self, db_path=None):
@@ -54,6 +64,7 @@ class DB:
                     cmdline TEXT,
                     input_path TEXT,
                     final_path TEXT,
+                    gpx_file   TEXT,
                     log_path TEXT,
                     streetview_info TEXT
                 )
@@ -64,6 +75,9 @@ class DB:
                 CREATE TABLE Photos (
                     id INTEGER PRIMARY KEY,
                     timelapse_image_id INTEGER,
+                    original_path TEXT,
+                    final_path TEXT,
+                    error TEXT,
                     photo_data TEXT,
                     FOREIGN KEY(timelapse_image_id) REFERENCES TimelapseImage(id)
                 )
@@ -72,27 +86,36 @@ class DB:
             conn.commit()
             conn.close()
 
-    def insert_output(self, input_path: Path, final_path: Path, log_path: Path, streetview_info=None, is_photo_mode=True, images=[]):
+    def insert_output(self, input_path: Path, final_path: Path, log_path: Path, streetview_info=None, is_photo_mode=True, video_info={}):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         table = "Video"
         if is_photo_mode:
             table = "TimelapseImage"
         cursor.execute(f'''
-            INSERT INTO {table} (cmdline, input_path, final_path, streetview_info, log_path)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (json.dumps(sys.argv), str(input_path), str(final_path), streetview_info, str(log_path)))
+            INSERT INTO {table} (cmdline, input_path, final_path, streetview_info, log_path, gpx_file)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (json.dumps(sys.argv), str(input_path), str(final_path), streetview_info, str(log_path), video_info.get("gpx_file")))
         conn.commit()
         pk = cursor.lastrowid
+        conn.close()
+
         if is_photo_mode:
-            cursor.executemany(f'''
-                INSERT INTO Photos (timelapse_image_id, photo_data)
-                VALUES (?, ?)
-            ''', map(lambda meta: (pk, json.dumps(meta, default=json_serialize)), images))
+            self.record_timelapse(video_info["images"], pk)
+        return pk
+
+    def record_timelapse(self, images, pk=None):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        table = "Video"
+        cursor.executemany(f'''
+            INSERT INTO Photos (timelapse_image_id, photo_data, original_path, final_path, error)
+            VALUES (?, ?, ?, ?, ?)
+        ''', map(lambda x:get_timelapse_tuple(pk, x), images))
 
         conn.commit()
         conn.close()
-        return pk
+        return
 
     def insert_user_setting(self, user_id, setting_name, setting_value):
         conn = sqlite3.connect(self.db_path)

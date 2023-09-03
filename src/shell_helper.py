@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from xml.dom.minidom import parseString, Element, Document
 from pathlib import Path
-import subprocess, sys, re, os
+import subprocess, sys, re, os, shutil
 from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 from io import BytesIO
 import tempfile
@@ -10,7 +10,7 @@ import importlib.resources
 from .errors import FatalException
 
 from logging import getLogger
-logger = getLogger(__name__)
+logger = getLogger("gopro2gsv.shell_helper")
 
 DEFAULT_FRAME_RATE = 5
 
@@ -141,6 +141,7 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
 
 def copy_metadata_from_file(frame: Path, video: Path):
     run_command_silently([get_exiftool(),"-TagsFromFile",frame, "-all:all>all:all", video])
+    delete_files(video.with_name(video.name+"_original"))
 
 def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, is_gpmd: bool):
     type_flag = "-g" if is_gpmd else "-c"
@@ -156,24 +157,16 @@ def get_exiftool():
 def get_magick():
     return os.environ.get("MAGICK_PATH") or 'magick'
 
-def overlay_nadir(video, overlay, output, video_width, video_height, is_watermark=False):
-    overlay_height = int(0.25 * video_height)
+def overlay_nadir(video, overlay, output, video_width, video_height, height_ratio=0.25):
+    overlay_height = int(height_ratio * video_height)
     overlay_width = video_width
     overlay_offset = f"0:{video_height-overlay_height}"
-    if is_watermark:
-        overlay_width = int(0.25*video_width)
-        overlay_height = f"h=ih*{video_height}/{video_width}"
-        overlay_offset = f"{video_width-overlay_width}:0"
-    else:
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            logger.debug(f"Pre-processing nadir at {f.name}")
-            run_command_silently([get_magick(), "convert", overlay, "-rotate", 180, "-distort", "depolar", 0, "-flip", "-flop", f.name])
-            overlay = f.name
+    with tempfile.NamedTemporaryFile() as f:
+        logger.debug(f"Pre-processing nadir at {f.name}")
+        run_command_silently([get_magick(), "convert", overlay, "-rotate", 180, "-distort", "depolar", 0, "-flip", "-flop", f.name])
 
-    run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f'[1:v]scale={overlay_width}:{overlay_height}[overlay]; [0:v][overlay]overlay={overlay_offset}', "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
-    # do_overlay(video, overlay, output, overlay_width, overlay_height, overlay_offset)
-    # run_command_silently([get_ffmpeg(), "-i", video, "-i", overlay, "-filter_complex", f'[1:v]scale={overlay_width}:{overlay_height}[ovl]; [ovl]v360=gnomonic:equirect[overlay]; [0:v][overlay]overlay={overlay_offset}', "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
-    copy_metadata_from_file(video, output)
+        run_command_silently([get_ffmpeg(), "-i", video, "-i", f.name, "-filter_complex", f'[1:v]scale={overlay_width}:{overlay_height}[overlay]; [0:v][overlay]overlay={overlay_offset}', "-c:a", "copy", "-map", "0", "-map", "-0:v", "-copy_unknown", "-y", output], stderr=subprocess.STDOUT)
+        copy_metadata_from_file(video, output)
 
 def get_streams(video: Path):
     output  = run_command_silently([get_ffmpeg(), "-i", video], stderr=subprocess.STDOUT, raise_for_status=False)
@@ -181,6 +174,17 @@ def get_streams(video: Path):
     for stream in STREAM_RE.findall(output):
         streams.append(SimpleNamespace(id=stream[0], type=stream[1].lower(), codec=stream[2], misc=stream[3]))
     return streams
+
+def delete_files(*files: Path):
+    for file in files:
+        try:
+            if file.is_dir():
+                shutil.rmtree(file)
+            else:
+                os.remove(file)
+        except Exception as e:
+            pass
+
 
 def parse_stream(stream: str):
     pass
