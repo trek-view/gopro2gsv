@@ -3,7 +3,7 @@ from xml.dom.minidom import parseString, Element, Document
 from pathlib import Path
 import subprocess, sys, re, os, shutil
 from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
-from io import BytesIO
+from xml.etree import ElementTree
 import tempfile
 import importlib.resources
 
@@ -106,6 +106,7 @@ def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
 
 def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFAULT_FRAME_RATE):
     gpx = GPX()
+    gpx.nsmap["gopro2gsv"] = "http://www.trekview.com/xmlschemas/TrackPointExtension/v1"
     track = GPXTrack()
     seg = GPXTrackSegment()
     gpx.tracks.append(track)
@@ -120,8 +121,11 @@ def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFA
         if image['GPS:GPSLatitudeRef'] == "S":
             latitude = -latitude
         point = GPXTrackPoint(latitude=latitude, longitude=longitude, elevation=image['GPS:GPSAltitude'], time=date+i*delta)
+        ext1 = ElementTree.Element("gopro2gsv:InputPhoto")
+        ext1.text = str(image['path'])
+        point.extensions.append(ext1)
         seg.points.append(point)
-    content = gpx.to_xml()
+    content = gpx.to_xml(version='1.1')
     with gpx_path.open("w") as f:
         f.write(content)
     return
