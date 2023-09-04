@@ -105,7 +105,7 @@ def main(args, is_photo_mode):
             args.output_filepath = input_dir/"gopro2gsv_output"
         output_filepath = Path(args.output_filepath)
         output_filepath.mkdir(parents=True, exist_ok=True)
-        output_filename = output_filepath.name
+        output_filename, _ = os.path.splitext(output_filepath.name)
         log_filepath    = output_filepath.with_name(output_filename+".log")
         setLogFile(logger, log_filepath)
         valid_images, invalid_files = get_files_from_dir(input_dir)
