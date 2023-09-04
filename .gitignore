@@ -172,4 +172,4 @@ cython_debug/
 gopro2gsv-venv
 tests
 
-gopro2gsv.sqlite
+gopro2gsv.sqlite*
