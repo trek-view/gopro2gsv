@@ -106,7 +106,7 @@ def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
 
 def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFAULT_FRAME_RATE):
     gpx = GPX()
-    gpx.nsmap["gopro2gsv"] = "http://www.trekview.com/xmlschemas/TrackPointExtension/v1"
+    gpx.nsmap["gopro2gsv"] = "https://github.com/trek-view/gopro2gsv"
     track = GPXTrack()
     seg = GPXTrackSegment()
     gpx.tracks.append(track)
