@@ -101,6 +101,7 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
         if (delta := date - prev_date) > timedelta(seconds=60):
             valid_images.pop(i)
             logger.warn(f"More than 60 seconds between two succeeding frames: [{name}|{delta.seconds} seconds]... removed")
+        prev_date = date
     return valid_images, invalid_files
 
 def write_images_to_dir(images: list[dict], dir: Path, images_per_video=300):
