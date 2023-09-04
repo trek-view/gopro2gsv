@@ -259,11 +259,9 @@ Once you have set the required consent information, select "API & Services" > "C
 
 Now select "Create credentials" > "OAuth client ID"
 
-Select Application type as "Web Application".
+Select Application type as "Desktop Application".
 
-The call back URL (redirect URI's) should be set to XXXX
-
-Enter a name for the credentials. This is helpful for tracking who these credentials are for.
+Enter a name for the credentials (e.g. `gopro2gsv`. This is helpful for tracking what these credentials are for.
 
 If everything is successful, Google will generate a client ID and client secret. Make a note of these.
 
@@ -272,20 +270,6 @@ You can place your Google Oauth application information in the `.env` file once 
 ```text
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-```
-
-##### 3. Create API key
-
-Now go back to "API & Services" > "Credentials" and select API key.
-
-It's good practise to restrict the API's the key can be used with. At a minimum the following are required;
-
-* Street View Publish API
-
-You can place the generated API key in the `.env` file once created.
-
-```text
-GOOGLE_API_KEY=
 ```
 
 ### Checking GSV state post upload
