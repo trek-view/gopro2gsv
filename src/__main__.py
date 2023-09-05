@@ -194,8 +194,9 @@ def main(args, is_photo_mode):
     logger = newLogger("GoPro2GSV")
     try:
         gopro2gsv(args, is_photo_mode, logger)
-    except Exception as e:
+    except FatalException as e:
         logger.error(e)
+    
 
 if __name__ == "__main__":
     load_dotenv()

@@ -2,7 +2,7 @@ import pathlib, shutil
 from pathlib import Path
 import re
 
-from .shell_helper import test_image, InvalidImageException
+from .shell_helper import test_image, InvalidImageException, get_exif_details_for_dir
 from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
@@ -43,7 +43,6 @@ def parse_date_and_width_from_exif(exif_data: dict[str, str]) -> tuple[int, date
     return raw_width, parse_date(raw__date)
 
 def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
-    files: list[pathlib.Path] = tuple(input_dir.iterdir())
     global_camera: bool = None
     global_prefix: str = None
     global_width: str = None
@@ -52,8 +51,8 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
     invalid_files = []
     valid_images = []
 
-    for f in files:
-        metadata = metadata_dict()
+    for f, metadata in get_exif_details_for_dir(input_dir).items():
+        metadata = metadata_dict(metadata)
         try:
             name = f.name.lower()
             if name.startswith("."):
@@ -69,8 +68,7 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
 
             if camera != global_camera or prefix != global_prefix:
                 raise InvalidImageException(f"filename `{f.name}` does not match pattern")
-
-            metadata = metadata_dict(test_image(str(f)))
+            test_image(metadata)
             width, date = parse_date_and_width_from_exif(metadata)
 
             if not global_width: # first iteration
