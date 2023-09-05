@@ -72,8 +72,11 @@ def parse_exif_metadata(content: bytes):
     return metadata
 
 def get_exif_details(path: str):
-    output = run_command_silently([get_exiftool(), "-ee", "-G3", "-n", "-X", "-api", "LargeFileSupport=1", path])
-    return parse_exif_metadata(output)
+    try:
+        output = run_command_silently([get_exiftool(), "-ee", "-G3", "-n", "-X", "-api", "LargeFileSupport=1", path])
+        return parse_exif_metadata(output)
+    except BaseException as e:
+        raise InvalidImageException(f"Could not get exif metadata from `{path}`") from e
 
 def test_image(path):
     MUST_HAVES = [
