@@ -57,8 +57,6 @@ def parse_args():
     group.add_argument("--input_video", help="for timelapse video mode, the path to the .mp4 video", type=functools.partial(parse_path, parser, is_file=True))
     group.add_argument("--input_directory", help="Path to the directory of .jpg images", type=functools.partial(parse_path, parser, is_file=False))
 
-    parser.add_argument("--video_telemetry_format", choices=["CAMM", "GPMD", "camm", "gpmd"], help="Video telemetry format (CAMM or GPMD)", type=str.upper)
-
     parser.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
 
     parser.add_argument("--output_filepath", help="Output filepath for video")
@@ -70,8 +68,6 @@ def parse_args():
 
     if args.input_directory:
         is_photo_mode = True
-        if not args.video_telemetry_format:
-            parser.error("--video_telemetry_format is required in photo mode")
     
 
     return args, is_photo_mode
@@ -130,8 +126,8 @@ def main(args, is_photo_mode):
             generate_gpx_from_images(valid_images[start:end], gpx_file)
             logger.info(f"generating video #{i} at {mp4_file}")
             create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, start, images_per_video, frame_rate=5)
-            logger.info(f"adding {args.video_telemetry_format} data stream to video #{i} at {final_mp4_file}")
-            make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=args.video_telemetry_format == "GPMD")
+            logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")
+            make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
             logger.info(f"copying metadata from first image into {final_mp4_file}")
             copy_metadata_from_file(first_image['newpath'], final_mp4_file)
             delete_files(mp4_file, processed_dir)
