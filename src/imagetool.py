@@ -94,9 +94,9 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
         date = image["date"]
         path: pathlib.Path = image["path"]
         name = path.name
-        if (delta := date - prev_date) > timedelta(seconds=60):
+        if (delta := date - prev_date) > timedelta(seconds=20):
             valid_images.pop(i)
-            logger.warn(f"More than 60 seconds between two succeeding frames: [{name}|{delta.seconds} seconds]... removed")
+            logger.warn(f"More than 20 seconds between two succeeding frames: [{name}|{delta.seconds} seconds]... removed")
         prev_date = date
     return valid_images, invalid_files
 
