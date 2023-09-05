@@ -58,8 +58,8 @@ It does this by checking each images metadata as follows;
 	* `GPS:GPSDateStamp` must be present
 4. GoPro2GSV checks all valid images from previous step have the same dimensions by ensuring all images have the same values for `File:ImageWidth` and `File:ImageWidth` properties
 5. GoPro2GSV sorts all valid images from previous step by time (`GPS:GPSDateStamp+GPS:GPSDateStamp`), earliest to latest.
-6. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >20 seconds. If true then the directory is not considered and an `INFO` log is reported
-7. GoPro2GSV checks that a directory with all valid images from previous step has >=5 valid images after the previous step. If <5 valid images then the directory is not considered and an `INFO` log is reported
+6. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >20 seconds. If true then the whole directory is not considered and an `ERROR` log is reported
+7. GoPro2GSV checks that a directory with all valid images from previous step has >=5 valid images after the previous step. If <5 valid images then the whole directory is not considered and an `ERROR` log is reported
 8. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
 9. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
 10. All valid images in each timelapse (directory) are now ready to be proccessed. A GPX file is created from the valid images as follows;
