@@ -18,6 +18,12 @@ from dotenv import load_dotenv
 
 import logging
 
+MINIMUM_REQUIRED_FRAMES = 10
+FRAMES_PER_VIDEO = 300
+TIMELAPSE_FRAME_RATE = 5
+TIMELAPSE_MINIMUM_REQUIRED_FRAMES = 1
+
+
 def newLogger(name: str) -> logging.Logger:
     # Configure logging
     stream_handler = logging.StreamHandler()  # Log to stdout and stderr
@@ -73,13 +79,12 @@ def parse_args():
     return args, is_photo_mode
 
 
-def main(args, is_photo_mode):
+def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
     videos: list[tuple[Path, int, int, dict|list[dict]]] = []
     log_filepath: Path = None
     streetview_id = None
     #init gsv if 
     database = DB()
-    logger = newLogger("GoPro2GSV")
     logger.info("====================================================")
     logger.info("=====================GoPro2GSV======================")
     logger.info("====================================================")
@@ -108,11 +113,12 @@ def main(args, is_photo_mode):
         processed_dir = output_filepath
         # gpx_file = input_dir/"processed.gpx"
         database.record_timelapse(invalid_files)
+        if len(valid_images) < TIMELAPSE_MINIMUM_REQUIRED_FRAMES:
+            raise FatalException(f"At least {TIMELAPSE_MINIMUM_REQUIRED_FRAMES} valid frames required, found {len(valid_images) or None}")
         logger.info(f"Copying {len(valid_images)} images to new directory: {processed_dir.absolute()}")
         write_images_to_dir(valid_images, processed_dir)
         number_of_images = len(valid_images)
-        images_per_video = 300
-        images_per_video = min(images_per_video, number_of_images//ceil(number_of_images/images_per_video)) #make it such that there's the same or close to the same number of images per video
+        images_per_video = min(FRAMES_PER_VIDEO, number_of_images//ceil(number_of_images/FRAMES_PER_VIDEO)) #make it such that there's the same or close to the same number of images per video
         parts = ceil(number_of_images/images_per_video)
         for i in range(1, parts+1):
             logger.info(f"Processing video #{i} of {parts}")
@@ -125,7 +131,7 @@ def main(args, is_photo_mode):
             logger.info(f"generating gpx file for video #{i} at {gpx_file}")
             generate_gpx_from_images(valid_images[start:end], gpx_file)
             logger.info(f"generating video #{i} at {mp4_file}")
-            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, start, images_per_video, frame_rate=5)
+            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, start, images_per_video, frame_rate=TIMELAPSE_FRAME_RATE)
             logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
             logger.info(f"copying metadata from first image into {final_mp4_file}")
@@ -152,7 +158,7 @@ def main(args, is_photo_mode):
         for k, v in metadata.items():
             if k.endswith(":GPSDateTime") and k.startswith("Track"):
                 valid_frames += len(v)
-        if valid_frames < 10:
+        if valid_frames < MINIMUM_REQUIRED_FRAMES:
             raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
         width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
         logger.info(f"Found {width}x{height} video with {valid_frames} valid frames at {input_vid}")
@@ -183,6 +189,13 @@ def main(args, is_photo_mode):
             database.insert_output(args.input_video.absolute(), newpath, log_filepath, streetview_info=streetview_id, is_photo_mode=False)
 
         logger.info(f"Video #{i+1} saved at `{newpath}`")
+
+def main(args, is_photo_mode):
+    logger = newLogger("GoPro2GSV")
+    try:
+        gopro2gsv(args, is_photo_mode, logger)
+    except Exception as e:
+        logger.error(e)
 
 if __name__ == "__main__":
     load_dotenv()
