@@ -117,6 +117,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             raise FatalException(f"At least {TIMELAPSE_MINIMUM_REQUIRED_FRAMES} valid frames required, found {len(valid_images) or None}")
         logger.info(f"Copying {len(valid_images)} images to new directory: {processed_dir.absolute()}")
         write_images_to_dir(valid_images, processed_dir)
+
         number_of_images = len(valid_images)
         parts = ceil(number_of_images/FRAMES_PER_VIDEO)
         frame_cursor = 0
@@ -127,6 +128,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
                 remaining_frames = number_of_images-end
                 if remaining_frames < 5:
                     end -= 5
+            
             gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
             mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
             final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")

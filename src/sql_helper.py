@@ -52,7 +52,8 @@ class DB:
                     cmdline TEXT,
                     input_path TEXT,
                     final_path TEXT,
-                    log_path TEXT,
+                    gpx_file   TEXT,
+                    log_path   TEXT,
                     streetview_info TEXT
                 )
             ''')
@@ -65,7 +66,7 @@ class DB:
                     input_path TEXT,
                     final_path TEXT,
                     gpx_file   TEXT,
-                    log_path TEXT,
+                    log_path   TEXT,
                     streetview_info TEXT
                 )
             ''')

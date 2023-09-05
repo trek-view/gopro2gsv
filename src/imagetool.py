@@ -90,8 +90,6 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
     valid_images.sort(key=lambda v: (v["date"], v["path"]))
 
     prev_date = valid_images and valid_images[0]["date"]
-    workdir = input_dir/"processed"
-    workdir.mkdir(exist_ok=True) # don't throw if folder already exist
     for i, image in enumerate(valid_images):
         date = image["date"]
         path: pathlib.Path = image["path"]
