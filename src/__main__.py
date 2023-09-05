@@ -118,26 +118,31 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
         logger.info(f"Copying {len(valid_images)} images to new directory: {processed_dir.absolute()}")
         write_images_to_dir(valid_images, processed_dir)
         number_of_images = len(valid_images)
-        images_per_video = min(FRAMES_PER_VIDEO, number_of_images//ceil(number_of_images/FRAMES_PER_VIDEO)) #make it such that there's the same or close to the same number of images per video
-        parts = ceil(number_of_images/images_per_video)
+        parts = ceil(number_of_images/FRAMES_PER_VIDEO)
+        frame_cursor = 0
         for i in range(1, parts+1):
             logger.info(f"Processing video #{i} of {parts}")
-            start = (i-1) * images_per_video
-            end   = start + images_per_video
+            end   = frame_cursor + FRAMES_PER_VIDEO
+            if i == parts-1:
+                remaining_frames = number_of_images-end
+                if remaining_frames < 5:
+                    end -= 5
             gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
             mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
             final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")
-            first_image = valid_images[start]
+            first_image = valid_images[frame_cursor]
             logger.info(f"generating gpx file for video #{i} at {gpx_file}")
-            generate_gpx_from_images(valid_images[start:end], gpx_file)
+            generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file)
             logger.info(f"generating video #{i} at {mp4_file}")
-            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, start, images_per_video, frame_rate=TIMELAPSE_FRAME_RATE)
+            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, frame_cursor, end-frame_cursor, frame_rate=TIMELAPSE_FRAME_RATE)
             logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
             logger.info(f"copying metadata from first image into {final_mp4_file}")
             copy_metadata_from_file(first_image['newpath'], final_mp4_file)
             delete_files(mp4_file)
-            videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[start:end], gpx_file=str(gpx_file)), final_mp4_file))
+            videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[frame_cursor:end], gpx_file=str(gpx_file)), final_mp4_file))
+
+            frame_cursor = end
         delete_files(processed_dir)
     else:
         input_vid : Path = args.input_video
