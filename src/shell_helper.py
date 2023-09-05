@@ -55,30 +55,40 @@ def getText(nodelist):
 
 def parse_exif_metadata(content: bytes):
     doc: Document = parseString(content)
-    root: Element = doc.getElementsByTagName("rdf:Description")[0]
-    child: Element = None
-    metadata = {}
-    for child in root.childNodes:
-        if child.nodeType == child.ELEMENT_NODE:
-            value = getText(child)
-            if first := metadata.get(child.tagName):
-                if isinstance(first, list):
-                    metadata[child.tagName].append(value)
+    root: Element = None
+    out_vals: dict[Path, dict] = {}
+    for root in doc.getElementsByTagName("rdf:Description"):
+        file = Path(root.getAttribute("rdf:about"))
+        child: Element = None
+        metadata = dict(path=file)
+        for child in root.childNodes:
+            if child.nodeType == child.ELEMENT_NODE:
+                value = getText(child)
+                if first := metadata.get(child.tagName):
+                    if isinstance(first, list):
+                        metadata[child.tagName].append(value)
+                    else:
+                        metadata[child.tagName] = [first, value]
                 else:
-                    metadata[child.tagName] = [first, value]
-            else:
-                metadata[child.tagName] = value
-
-    return metadata
+                    metadata[child.tagName] = value
+        out_vals[file] = metadata
+    return out_vals
 
 def get_exif_details(path: str):
     try:
         output = run_command_silently([get_exiftool(), "-ee", "-G3", "-n", "-X", "-api", "LargeFileSupport=1", path])
+        return next(iter(parse_exif_metadata(output).values()))
+    except BaseException as e:
+        raise InvalidImageException(f"Could not get exif metadata from `{path}`") from e
+
+def get_exif_details_for_dir(path: Path):
+    try:
+        output = run_command_silently([get_exiftool(), "-ee", "-G3", "-n", "-X", "-api", "LargeFileSupport=1", path], raise_for_status=False)
         return parse_exif_metadata(output)
     except BaseException as e:
         raise InvalidImageException(f"Could not get exif metadata from `{path}`") from e
 
-def test_image(path):
+def test_image(exif_data):
     MUST_HAVES = [
         "GPS:GPSLatitudeRef",
         "GPS:GPSLatitude",
@@ -89,7 +99,6 @@ def test_image(path):
         "GPS:GPSDateStamp",
         "GPS:GPSTimeStamp",
     ]
-    exif_data = get_exif_details(path)
     if not (projection_type := exif_data.get("XMP-GPano:ProjectionType")):
         raise InvalidImageException("Image must have `XMP-GPano:ProjectionType`")
     if projection_type != "equirectangular":
@@ -97,7 +106,7 @@ def test_image(path):
     for key in MUST_HAVES:
         if not (value := exif_data.get(key)):
             raise InvalidImageException(f"Image's exif data missing `{key}`")
-    return exif_data
+    return True
 
 def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
     if not dir.exists():
