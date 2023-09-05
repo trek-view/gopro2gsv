@@ -18,10 +18,10 @@ from dotenv import load_dotenv
 
 import logging
 
-MINIMUM_REQUIRED_FRAMES = 10
+MINIMUM_REQUIRED_FRAMES = 5
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
-TIMELAPSE_MINIMUM_REQUIRED_FRAMES = 1
+TIMELAPSE_MINIMUM_REQUIRED_FRAMES = 5
 
 
 def newLogger(name: str) -> logging.Logger:

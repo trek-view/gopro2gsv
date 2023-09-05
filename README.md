@@ -59,9 +59,10 @@ It does this by checking each images metadata as follows;
 4. GoPro2GSV checks all valid images from previous step have the same dimensions by ensuring all images have the same values for `File:ImageWidth` and `File:ImageWidth` properties
 5. GoPro2GSV sorts all valid images from previous step by time (`GPS:GPSDateStamp+GPS:GPSDateStamp`), earliest to latest.
 6. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >60 seconds. If true then the directory is not considered and an `INFO` log is reported
-7. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
-8. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
-9. All valid images in each timelapse (directory) are now ready to be proccessed. A GPX file is created from the valid images as follows;
+7. GoPro2GSV checks that a directory with all valid images from previous step has >=10 valid images after the previous step. If <10 valid images then the directory is not considered and an `INFO` log is reported
+8. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
+9. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
+10. All valid images in each timelapse (directory) are now ready to be proccessed. A GPX file is created from the valid images as follows;
 
 ```shell
 exiftool -fileOrder gpsdatetime -p gpx.fmt <DIRECTORY NAME> <DIRECTORY NAME>.gpx
@@ -291,6 +292,12 @@ A `FAILED` response means something went wrong, and the information is captured 
 	* `<DIRECTORY NAME/VIDEO NAME>-<N>.log`: a log detailing a breakdown of script run
 
 Note, in the case of image inputs where more than one video is created (as more than 300 frames entered), there will be multiple `.gpx`, `.mp4`, and `.log` files. `-<N>` is the count of these files, starting at `1`, e.g. `my_directory_name-1.gpx`, `my_directory_name-1.mp4`, `my_directory_name-1.log`, `my_directory_name-2.gpx`, etc.
+
+As noted earlier, an output video should always have 5 frames.
+
+To ensure second and third videos create by the input always have 5 or more frames, gopro2gsv packs videos to either 295 or 300 frames.
+
+If >5 will exist in second video (e.g. 297 frames total in input), the video will pack to 300 frames. However, if <5 will exist in second video (e.g. 302 frames total in input) then the first video will pack to 295 frames and second vidoe will contain 7 frames.
 
 ### Logging
 
