@@ -4,13 +4,13 @@ Here are Trek View we use GoPro Fusion and MAX cameras to record 360 images and 
 
 The results of this work is published to either Google StreetView or Mapillary. In many cases we apply a nadir to these images to brand the video with our logo before uploading them.
 
-Both these tools accept video uploads containing either CAMM or GPMF telemetry tracks.
+Both these tools accept video uploads containing GPMF telemetry tracks.
 
 To suport this workflow GoPro2GSV supports a;
 
 Photo mode:
 
-1. takes timelapse images (equirectangular) and converts them into a single video with a GPMF or CAMM telemetry track
+1. takes timelapse images (equirectangular) and converts them into a single video with a GPMF telemetry track
 2. optionally adds a nadir to the resulting video
 3. stores output to local filesystem
 4. uploads video to GSV
@@ -74,7 +74,7 @@ Note, the about command assumes that only the valid images are in the directory.
 There are three distinct parts of the video created from the validated images
 
 * video track: the video made from the images
-* telemetry track: the telemetry track created from the image metadata (GPMF or CAMM)
+* telemetry track: the telemetry track created from the image metadata (currently only GPMF)
 * video file metadata: the file metadata
 
 ##### Video processing
@@ -345,8 +345,6 @@ Timelapse photo to video mode:
 
 * `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
 	* e.g. `/path/to/my/directory`
-* `--video_telemetry_format` (required)
-	* either `CAMM` or `GPMD`
 * `--path_to_nadir` (optional): a square nadir to be added to the images
 	* e.g. `/path/to/nadir.png`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
