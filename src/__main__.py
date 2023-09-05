@@ -130,8 +130,9 @@ def main(args, is_photo_mode):
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
             logger.info(f"copying metadata from first image into {final_mp4_file}")
             copy_metadata_from_file(first_image['newpath'], final_mp4_file)
-            delete_files(mp4_file, processed_dir)
+            delete_files(mp4_file)
             videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[start:end], gpx_file=str(gpx_file)), final_mp4_file))
+        delete_files(processed_dir)
     else:
         input_vid : Path = args.input_video
         if not args.output_filepath:

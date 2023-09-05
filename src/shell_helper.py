@@ -29,9 +29,10 @@ STREAM_RE = re.compile(r"Stream (#\d+:\d+)\[\w+\]\(\w+\):\s+(\w+):\s+(\w+)\s+(.*
 
 def run_command_silently(cmd, decode_output=True, raise_for_status=True, **kw):
     cmd = list(map(str, cmd))
+    cmd_str = " ".join(map(repr, cmd))
     try:
 
-        logger.debug(f"Running Command:\t" + " ".join(map(repr, cmd)))
+        logger.debug(f"Running Command:\t{cmd_str}")
         if not decode_output:
             return subprocess.check_output(cmd, universal_newlines=True, **kw)
         output = subprocess.check_output(cmd, encoding='utf-8', **kw)
@@ -39,7 +40,7 @@ def run_command_silently(cmd, decode_output=True, raise_for_status=True, **kw):
     except subprocess.CalledProcessError as e:
         error_message = e.output.strip()
         if raise_for_status:
-            raise RuntimeError(f"Error running command '{cmd}': {error_message}")
+            raise RuntimeError(f"Error running command `{cmd_str}`: {error_message}")
         return error_message
 
 

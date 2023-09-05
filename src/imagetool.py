@@ -104,7 +104,7 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
         prev_date = date
     return valid_images, invalid_files
 
-def write_images_to_dir(images: list[dict], dir: Path, images_per_video=300):
+def write_images_to_dir(images: list[dict], dir: Path):
     dir.mkdir(exist_ok=True)
     for i, image in enumerate(images):
         path: Path = image['path']
