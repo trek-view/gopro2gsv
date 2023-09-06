@@ -5,7 +5,7 @@ from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 import requests, os, json
 import urllib.parse as urlparse
-from .errors import FatalException
+from .errors import FatalException, GSVException
 
 from pathlib import Path
 from googleapiclient.discovery import build
@@ -76,5 +76,22 @@ class GSV:
         except google_errors.HttpError as e:
             msg = json.loads(e.content)
             raise FatalException(f"Publish failed with message: {msg}") from e
+
+    def get_status(self, sequenceId: str)->tuple:
+        service = build(self.API_NAME, self.API_VERSION, credentials=self.credentials)
+        status, message = None, None
+        try:
+            resp = service.photoSequence().get(sequenceId=sequenceId).execute()
+            if not resp.get("done"):
+                # status = resp["response"]['processingState']
+                status = "PROCESSING"
+            elif err:=resp.get("error"):
+                status, message = "FAILED", err["message"]
+            else:
+                status = "PUBLISHED"
+            return status, message, sequenceId
+        except google_errors.HttpError as e:
+            msg = json.loads(e.content)
+            raise GSVException(f"Publish failed with message: {msg}") from e
 
 

@@ -49,54 +49,60 @@ class DB:
             cursor.execute('''
                 CREATE TABLE Video (
                     id INTEGER PRIMARY KEY,
+                    type    TEXT,
                     cmdline TEXT,
                     input_path TEXT,
                     final_path TEXT,
                     gpx_file   TEXT,
                     log_path   TEXT,
-                    streetview_info TEXT
+                    streetview_id TEXT,
+                    gsv_status TEXT,
+                    gsv_error TEXT
                 )
             ''')
 
-            # Create TimelapseImages table
-            cursor.execute('''
-                CREATE TABLE TimelapseImage (
-                    id INTEGER PRIMARY KEY,
-                    cmdline TEXT,
-                    input_path TEXT,
-                    final_path TEXT,
-                    gpx_file   TEXT,
-                    log_path   TEXT,
-                    streetview_info TEXT
-                )
-            ''')
+            # # Create TimelapseImages table
+            # cursor.execute('''
+            #     CREATE TABLE TimelapseImage (
+            #         id INTEGER PRIMARY KEY,
+            #         cmdline TEXT,
+            #         input_path TEXT,
+            #         final_path TEXT,
+            #         gpx_file   TEXT,
+            #         log_path   TEXT,
+            #         streetview_id TEXT
+            #     )
+            # ''')
 
             # Create Photos table
             cursor.execute('''
                 CREATE TABLE Photos (
                     id INTEGER PRIMARY KEY,
-                    timelapse_image_id INTEGER,
+                    timelapse_video_id INTEGER,
                     original_path TEXT,
                     final_path TEXT,
                     error TEXT,
                     photo_data TEXT,
-                    FOREIGN KEY(timelapse_image_id) REFERENCES TimelapseImage(id)
+                    FOREIGN KEY(timelapse_video_id) REFERENCES Video(id)
                 )
             ''')
 
             conn.commit()
             conn.close()
 
-    def insert_output(self, input_path: Path, final_path: Path, log_path: Path, streetview_info=None, is_photo_mode=True, video_info={}):
+    def insert_output(self, input_path: Path, final_path: Path, log_path: Path, streetview_id=None, is_photo_mode=True, video_info={}):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        table = "Video"
+        type = "VIDEO"
         if is_photo_mode:
-            table = "TimelapseImage"
+            type = "TIMELAPSE"
+        gsv_status = None
+        if streetview_id:
+            gsv_status = "PROCESSING"
         cursor.execute(f'''
-            INSERT INTO {table} (cmdline, input_path, final_path, streetview_info, log_path, gpx_file)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (json.dumps(sys.argv), str(input_path), str(final_path), streetview_info, str(log_path), video_info.get("gpx_file")))
+            INSERT INTO Video (cmdline, type, input_path, final_path, streetview_id, gsv_status, log_path, gpx_file)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (json.dumps(sys.argv), type, str(input_path), str(final_path), streetview_id, gsv_status, str(log_path), video_info.get("gpx_file")))
         conn.commit()
         pk = cursor.lastrowid
         conn.close()
@@ -108,9 +114,8 @@ class DB:
     def record_timelapse(self, images, pk=None):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        table = "Video"
         cursor.executemany(f'''
-            INSERT INTO Photos (timelapse_image_id, photo_data, original_path, final_path, error)
+            INSERT INTO Photos (timelapse_video_id, photo_data, original_path, final_path, error)
             VALUES (?, ?, ?, ?, ?)
         ''', map(lambda x:get_timelapse_tuple(pk, x), images))
 
@@ -154,6 +159,29 @@ class DB:
         except:
             return None
 
+    def get_unfinished_gsv_uploads(self):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('SELECT streetview_id, gsv_status, gsv_error FROM Video WHERE gsv_status = ?', ("PROCESSING",))
+            uploads = cursor.fetchall()
+            conn.close()
+            return uploads
+        except:
+            raise
     
-
+    def update_gsv_statuses(self, statuses: list[tuple[str, str, str]]):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.executemany('''
+                UPDATE Video 
+                SET gsv_status = ?, gsv_error = ?
+                WHERE streetview_id = ?''', statuses)
+            conn.commit()
+            conn.close()
+            return True
+        except:
+            raise
+    
     # Similar functions for inserting data into other tables

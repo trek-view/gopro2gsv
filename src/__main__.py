@@ -62,6 +62,7 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--input_video", help="for timelapse video mode, the path to the .mp4 video", type=functools.partial(parse_path, parser, is_file=True))
     group.add_argument("--input_directory", help="Path to the directory of .jpg images", type=functools.partial(parse_path, parser, is_file=False))
+    group.add_argument("--refresh_upload_status", action="store_true", help="rechecks all GSV uploaded sequences not in PROCESSED or FAILED states")
 
     parser.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
 
@@ -88,7 +89,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
     logger.info("====================================================")
     logger.info("=====================GoPro2GSV======================")
     logger.info("====================================================")
-    if args.upload_to_streetview:
+    if args.upload_to_streetview or args.refresh_upload_status:
         secret = os.getenv("GOOGLE_CLIENT_SECRET")
         client_id = os.getenv("GOOGLE_APP_ID")
         key = os.getenv("GOOGLE_CLIENT_KEY")
@@ -99,8 +100,15 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             creds = None
         gsv = GSV(client_id, secret, creds)
         database.save_gsv_auth(gsv.credentials.to_json())
-        
-    if is_photo_mode:
+
+    if args.refresh_upload_status:
+        statuses: list[tuple[str, str|None, str|None]] = []
+        for id, _, _ in database.get_unfinished_gsv_uploads():
+            logger.info(f"Updating status for {id}")
+            statuses.append(gsv.get_status(id))
+        database.update_gsv_statuses(statuses)
+        return
+    elif is_photo_mode:
         input_dir : pathlib.Path = args.input_directory
         if not args.output_filepath:
             args.output_filepath = input_dir/"gopro2gsv_output"
@@ -191,9 +199,9 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             logger.info(f"[SUCCESS] Sequence uploaded for {newpath}! Sequence id: {streetview_id}")
 
         if is_photo_mode:
-            database.insert_output(args.input_directory.absolute(), newpath, log_filepath, streetview_info=streetview_id, is_photo_mode=True, video_info=more)
+            database.insert_output(args.input_directory.absolute(), newpath, log_filepath, streetview_id=streetview_id, is_photo_mode=True, video_info=more)
         else:
-            database.insert_output(args.input_video.absolute(), newpath, log_filepath, streetview_info=streetview_id, is_photo_mode=False)
+            database.insert_output(args.input_video.absolute(), newpath, log_filepath, streetview_id=streetview_id, is_photo_mode=False)
 
         logger.info(f"Video #{i+1} saved at `{newpath}`")
 
