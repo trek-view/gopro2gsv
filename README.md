@@ -29,7 +29,10 @@ GoPro2GSV only officially supports GoPro Fusion and GoPro MAX cameras where the 
 ## READ BEFORE YOU BEGIN
 
 * this script does not work with unprocessed files from Fusion or MAX cameras. gopro2frames will take GoPro Fusion dual fisheye images, GoPro Fusion dual fisheye videos, or GoPro MAX 360 videos and convert them into equirectangular image frames that can be uploaded using photo mode, see: https://github.com/trek-view/gopro2frames
-* this script is not suitable for videos shot 
+* if you just want to add a nadir to an equirectangular image you should use Nadir Patcher: https://github.com/trek-view/nadir-patcher
+* this script is not suitable for videos shot in Timewarp / Timelapse mode. This is due to mismatch between GPS and extracted frame times. Potential solutions to this are described below, but not yet implemented:
+	* Turning a GoPro TimeWarp Video into Photo Frames: https://www.trekview.org/blog/turn-gopro-timewarp-video-into-timelapse-images/
+	* Turning a GoPro TimeLapse Video into Photo Frames: https://www.trekview.org/blog/turn-gopro-timelapse-video-into-timelapse-images/
 
 ## Inputs
 
@@ -370,7 +373,7 @@ Video to video mode:
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
-* `--refresh_upload_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
+* `--refresh_upload_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states. [More on Google Street View States here](https://developers.google.com/streetview/publish/reference/rest/v1/photoSequence/create#PhotoSequence).
 
 ## License
 
