@@ -4,13 +4,13 @@ Here are Trek View we use GoPro Fusion and MAX cameras to record 360 images and 
 
 The results of this work is published to either Google StreetView or Mapillary. In many cases we apply a nadir to these images to brand the video with our logo before uploading them.
 
-Both these tools accept video uploads containing either CAMM or GPMF telemetry tracks.
+Both these tools accept video uploads containing GPMF telemetry tracks.
 
 To suport this workflow GoPro2GSV supports a;
 
 Photo mode:
 
-1. takes timelapse images (equirectangular) and converts them into a single video with a GPMF or CAMM telemetry track
+1. takes timelapse images (equirectangular) and converts them into a single video with a GPMF telemetry track
 2. optionally adds a nadir to the resulting video
 3. stores output to local filesystem
 4. uploads video to GSV
@@ -29,7 +29,10 @@ GoPro2GSV only officially supports GoPro Fusion and GoPro MAX cameras where the 
 ## READ BEFORE YOU BEGIN
 
 * this script does not work with unprocessed files from Fusion or MAX cameras. gopro2frames will take GoPro Fusion dual fisheye images, GoPro Fusion dual fisheye videos, or GoPro MAX 360 videos and convert them into equirectangular image frames that can be uploaded using photo mode, see: https://github.com/trek-view/gopro2frames
-* this script is not suitable for videos shot 
+* if you just want to add a nadir to an equirectangular image you should use Nadir Patcher: https://github.com/trek-view/nadir-patcher
+* this script is not suitable for videos shot in Timewarp / Timelapse mode. This is due to mismatch between GPS and extracted frame times. Potential solutions to this are described below, but not yet implemented:
+	* Turning a GoPro TimeWarp Video into Photo Frames: https://www.trekview.org/blog/turn-gopro-timewarp-video-into-timelapse-images/
+	* Turning a GoPro TimeLapse Video into Photo Frames: https://www.trekview.org/blog/turn-gopro-timelapse-video-into-timelapse-images/
 
 ## Inputs
 
@@ -58,8 +61,8 @@ It does this by checking each images metadata as follows;
 	* `GPS:GPSDateStamp` must be present
 4. GoPro2GSV checks all valid images from previous step have the same dimensions by ensuring all images have the same values for `File:ImageWidth` and `File:ImageWidth` properties
 5. GoPro2GSV sorts all valid images from previous step by time (`GPS:GPSDateStamp+GPS:GPSDateStamp`), earliest to latest.
-6. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >60 seconds. If true then the directory is not considered and an `INFO` log is reported
-7. GoPro2GSV checks that a directory with all valid images from previous step has >=10 valid images after the previous step. If <10 valid images then the directory is not considered and an `INFO` log is reported
+6. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >20 seconds. If true then the whole directory is not considered and an `ERROR` log is reported
+7. GoPro2GSV checks that a directory with all valid images from previous step has >=5 valid images after the previous step. If <5 valid images then the whole directory is not considered and an `ERROR` log is reported
 8. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
 9. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
 10. All valid images in each timelapse (directory) are now ready to be proccessed. A GPX file is created from the valid images as follows;
@@ -75,7 +78,7 @@ Note, the about command assumes that only the valid images are in the directory.
 There are three distinct parts of the video created from the validated images
 
 * video track: the video made from the images
-* telemetry track: the telemetry track created from the image metadata (GPMF or CAMM)
+* telemetry track: the telemetry track created from the image metadata (currently only GPMF)
 * video file metadata: the file metadata
 
 ##### Video processing
@@ -223,13 +226,56 @@ The output video must match the input video for quality and for contained tracks
 
 ### Uploading to GSV
 
+#### API endpoint info
+
 The video can be uploaded using the GSV `photoSequence` endpoint where the `InputType` is `VIDEO`
 
 https://developers.google.com/streetview/publish/reference/rest/v1/photoSequence/create
 
 Note, the `rawGpsTimeline` does not need to be passed, as the video has this data embedded in it.
 
-### Checking GSV state
+#### GSV setup
+
+Note, to use the Street View video API methods, you will need to setup a new project in Google Cloud to access the Google API's.
+
+##### 1. Create project and enable API
+
+To do this, login to the [GCP Console](https://console.developers.google.com/).
+
+The project name can be anything you want. It will only be visible to you in the GCP Console.
+
+This app requires the following Google API's to work:
+
+* [Street View Publish API](https://console.cloud.google.com/apis/library/streetviewpublish.googleapis.com)
+
+##### 2. Create Oauth credentials
+
+If this is your first time creating a project you might see the message:
+
+> "To create an OAuth client ID, you must first set a product name on the consent screen."
+
+Click the "Configure consent screen" button to do this.
+
+The only field you need to fill in is "Application name". This name will be shown when you authenticate to allow the script to use your Google account to publish to Street View.
+
+Once you have set the required consent information, select "API & Services" > "Credentials".
+
+Now select "Create credentials" > "OAuth client ID"
+
+Select Application type as "Desktop Application".
+
+Enter a name for the credentials (e.g. `gopro2gsv`. This is helpful for tracking what these credentials are for.
+
+If everything is successful, Google will generate a client ID and client secret. Make a note of these.
+
+You can place your Google Oauth application information in the `.env` file once created.
+
+```text
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+### Checking GSV state post upload
 
 Each upload goes through various processing states: https://developers.google.com/streetview/publish/reference/rest/v1/photoSequence/create#ProcessingState
 
@@ -249,6 +295,12 @@ A `FAILED` response means something went wrong, and the information is captured 
 	* `<DIRECTORY NAME/VIDEO NAME>-<N>.log`: a log detailing a breakdown of script run
 
 Note, in the case of image inputs where more than one video is created (as more than 300 frames entered), there will be multiple `.gpx`, `.mp4`, and `.log` files. `-<N>` is the count of these files, starting at `1`, e.g. `my_directory_name-1.gpx`, `my_directory_name-1.mp4`, `my_directory_name-1.log`, `my_directory_name-2.gpx`, etc.
+
+As noted earlier, an output video should always have 5 frames.
+
+To ensure second and third videos create by the input always have 5 or more frames, gopro2gsv packs videos to either 295 or 300 frames.
+
+If >5 will exist in second video (e.g. 297 frames total in input), the video will pack to 300 frames. However, if <5 will exist in second video (e.g. 302 frames total in input) then the first video will pack to 295 frames and second vidoe will contain 7 frames.
 
 ### Logging
 
@@ -276,6 +328,23 @@ The local SQLite database is structured with two tables;
 
 ## Usage
 
+### Setup
+
+Install the required dependencies using:
+
+```shell
+# clone the latest code
+git clone https://github.com/trek-view/gopro2gsv
+cd gopro2gsv
+# create a venv
+python3 -m venv gopro2gsv-venv
+source gopro2gsv-venv/bin/activate
+# install requirements
+pip3 install -r requirements.txt
+```
+
+### Run
+
 As a user you must set an `.env` file to use certain features. See `.env.sample` in the root of this repo for more info.
 
 ```shell
@@ -286,27 +355,25 @@ Timelapse photo to video mode:
 
 * `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
 	* e.g. `/path/to/my/directory`
-* `--video_telemetry_format` (required)
-	* either `CAMM` or `GPMD`
 * `--path_to_nadir` (optional): a square nadir to be added to the images
 	* e.g. `/path/to/nadir.png`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-* `--output_filepath` (optional): name of video and directory for output
+* `--output_filepath` (required): name of video and directory for output
 	* e.g. `/path/to/my/file-out.mp4`
 
 Video to video mode:
 
 * `--input_video` (required): for timelapse video mode, the path to the `.mp4` video
 	* e.g. `/path/to/my/file-in.mp4`
-* `--path_to_nadir` (optional): a square nadir to be added to the images
+* `--path_to_nadir` (required): a square nadir to be added to the images
 	* e.g. `/path/to/nadir.png`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-* `--output_filepath` (optional): name of video and directory for output
+* `--output_filepath` (required): name of video and directory for output
 	* e.g. `/path/to/my/file-out.mp4`
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
-* `--refresh_upload_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states
+* `--refresh_upload_status`: rechecks all GSV uploaded sequences not in `PROCESSED` or `FAILED` states. [More on Google Street View States here](https://developers.google.com/streetview/publish/reference/rest/v1/photoSequence/create#PhotoSequence).
 
 ## License
 
