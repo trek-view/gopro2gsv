@@ -91,15 +91,15 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
     logger.info("=====================GoPro2GSV======================")
     logger.info("====================================================")
     if args.upload_to_streetview or args.refresh_upload_status:
-        secret = os.getenv("GOOGLE_CLIENT_SECRET")
-        client_id = os.getenv("GOOGLE_APP_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
         key = os.getenv("GOOGLE_CLIENT_KEY")
-        if not client_id or not secret:
-            raise FatalException("--upload_to_streetview passed but `GOOGLE_APP_ID` or `GOOGLE_CLIENT_SECRET` not found in env")
+        if not client_id or not client_secret:
+            raise FatalException("--upload_to_streetview/--refresh_upload_status passed but `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` not found in env")
         creds = database.get_gsv_auth()
         if args.force_relogin:
             creds = None
-        gsv = GSV(client_id, secret, creds)
+        gsv = GSV(client_id, client_secret, creds)
         database.save_gsv_auth(gsv.credentials.to_json())
 
     if args.refresh_upload_status:
