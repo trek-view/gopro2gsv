@@ -11,6 +11,7 @@ from .shell_helper import (copy_metadata_from_file, create_video_from_images,
                            generate_gpx_from_images, get_exif_details,
                            make_video_gsv_compatible, overlay_nadir,
                            get_streams, delete_files)
+from datetime import timedelta
 from .gsv import GSV
 from .sql_helper import DB
 from .errors import FatalException
@@ -142,7 +143,8 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")
             first_image = valid_images[frame_cursor]
             logger.info(f"generating gpx file for video #{i} at {gpx_file}")
-            generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file)
+            start_date = valid_images[0]["date"] + frame_cursor*timedelta(seconds=1)/TIMELAPSE_FRAME_RATE
+            generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file, start_date=start_date)
             logger.info(f"generating video #{i} at {mp4_file}")
             create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, frame_cursor, end-frame_cursor, frame_rate=TIMELAPSE_FRAME_RATE)
             logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")

@@ -117,14 +117,14 @@ def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
     return
 
 
-def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFAULT_FRAME_RATE):
+def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFAULT_FRAME_RATE, start_date=None):
     gpx = GPX()
     gpx.nsmap["gopro2gsv"] = "https://github.com/trek-view/gopro2gsv"
     track = GPXTrack()
     seg = GPXTrackSegment()
     gpx.tracks.append(track)
     track.segments.append(seg)
-    date = images[0]['date']
+    date = start_date or images[0]['date']
     delta = timedelta(seconds=1)/frame_rate
     for i, image in enumerate(images):
         longitude = float(image['GPS:GPSLongitude'])
