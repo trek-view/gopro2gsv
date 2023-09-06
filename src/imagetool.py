@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 
 from .shell_helper import test_image, InvalidImageException, get_exif_details_for_dir
+from .errors import FatalException
 from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
@@ -13,6 +14,8 @@ logger = getLogger("gopro2gsv.image_tool")
 
 MAX_RE = re.compile(r"(\w{4}).*.jpg")
 FUSION_RE = re.compile(r"multishot_(\d{4})_.*.jpg")
+
+MAX_TIME_DIFFERENCE = 20
 
 CAMERAS_RE = {
     "fusion": re.compile(r"(\w{4}).*.jpg"),
@@ -94,9 +97,9 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
         date = image["date"]
         path: pathlib.Path = image["path"]
         name = path.name
-        if (delta := date - prev_date) > timedelta(seconds=20):
+        if (delta := date - prev_date) > timedelta(seconds=MAX_TIME_DIFFERENCE):
             valid_images.pop(i)
-            logger.warn(f"More than 20 seconds between two succeeding frames: [{name}|{delta.seconds} seconds]... removed")
+            raise FatalException(f"More than {MAX_TIME_DIFFERENCE} seconds between two succeeding frames: [{name}|{delta.seconds} seconds]")
         prev_date = date
     return valid_images, invalid_files
 
