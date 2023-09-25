@@ -343,6 +343,22 @@ source gopro2gsv-venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
+You will also need: 
+
+* [Imagemagick](https://imagemagick.org/script/download.php)
+* [ffmpeg](https://www.ffmpeg.org/download.html)
+* [exiftool](https://exiftool.org/install.html)
+
+These must be installed in the path. You can check this by running `magick`, `ffmpeg` , `exiftool` from the CLI. If it returns information about the tools, they are correctly installed.
+
+If these are installed in the default paths no more action is needed (generally the case). However, if the paths are custom, you will need to set these in the `.env` file under:
+
+```txt
+MAGICK_PATH=
+FFMPEG_PATH=
+EXIFTOOL_PATH=
+```
+
 ### Run
 
 As a user you must set an `.env` file to use certain features. See `.env.sample` in the root of this repo for more info.
