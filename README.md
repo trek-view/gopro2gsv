@@ -210,7 +210,7 @@ Helpful supporting information for this section:
 
 In either mode (image or video) a user can add a nadir to the resulting image file.
 
-A square nadir can be provided by the user on input with a minumum dimension of 1000x1000px and must be a `.png` image.
+A square nadir can be provided by the user on input with a minumum dimension of 750x750px and must be a `.png` image.
 
 To determine how the nadir needs to be resized, the video resolution is checked as follows;
 
@@ -351,7 +351,13 @@ You will also need:
 
 These must be installed in the path. You can check this by running `magick`, `ffmpeg` , `exiftool` from the CLI. If it returns information about the tools, they are correctly installed.
 
-If these are installed in the default paths no more action is needed (generally the case). However, if the paths are custom, you will need to set these in the `.env` file under:
+On a Mac, you can install these quickly using brew as follows;
+
+```shell
+brew install ffmpeg exiftool imagemagick
+```
+
+If these are installed in the default paths no more action is needed (generally the case if installed using defaults). However, if the paths are custom, you will need to set these in the `.env` file under:
 
 ```txt
 MAGICK_PATH=
