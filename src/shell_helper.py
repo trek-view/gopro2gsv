@@ -6,7 +6,6 @@ from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 from xml.etree import ElementTree
 import tempfile
 import importlib.resources
-
 from .errors import FatalException
 
 from logging import getLogger
@@ -144,7 +143,7 @@ def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFA
     return
 
 
-def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=None, frame_rate=DEFAULT_FRAME_RATE):
+def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=None, frame_rate=DEFAULT_FRAME_RATE, date=datetime.today()):
     cmd = [get_ffmpeg(), "-r", str(frame_rate)]
     if start:
         cmd.extend(["-start_number", str(start)])
@@ -154,10 +153,16 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     cmd.extend(["-y", mp4_path]) #always overwrite
 
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
+    set_date_metadata(mp4_path, date)
     return
 
 def copy_metadata_from_file(frame: Path, video: Path):
     run_command_silently([get_exiftool(),"-TagsFromFile",frame, "-all:all>all:all", video])
+    delete_files(video.with_name(video.name+"_original"))
+
+def set_date_metadata(video: Path, date: datetime):
+    dfm = date.isoformat().replace("-", ":")
+    run_command_silently([get_exiftool(), "-api", "QuickTimeUTC", f"-Media*Date={dfm}", f"-Track*Date={dfm}", f"-AllDates={dfm}", video])
     delete_files(video.with_name(video.name+"_original"))
 
 def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, is_gpmd: bool):

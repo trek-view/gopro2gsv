@@ -146,7 +146,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             start_date = valid_images[0]["date"] + frame_cursor*timedelta(seconds=1)/TIMELAPSE_FRAME_RATE
             generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file, start_date=start_date)
             logger.info(f"generating video #{i} at {mp4_file}")
-            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, frame_cursor, end-frame_cursor, frame_rate=TIMELAPSE_FRAME_RATE)
+            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, frame_cursor, end-frame_cursor, frame_rate=TIMELAPSE_FRAME_RATE, date=first_image['date'])
             logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
             logger.info(f"copying metadata from first image into {final_mp4_file}")
