@@ -2115,7 +2115,7 @@ class Mp4Atom():
         hdlr.content_size += 8
         hdlr.subtype_metadata_type = b'\x00\x00\x00\x00'
         hdlr.content_size += 4
-        hdlr.quicktime_component_reserved_flags_mask = b'\x0bGoPro MET  '
+        hdlr.quicktime_component_reserved_flags_mask = b'\x0bGoPro MET'
         hdlr.content_size += 12
 
         gmin = GminBox.create()
