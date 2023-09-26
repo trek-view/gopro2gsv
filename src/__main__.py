@@ -10,7 +10,7 @@ from .imagetool import get_files_from_dir, write_images_to_dir
 from .shell_helper import (copy_metadata_from_file, create_video_from_images,
                            generate_gpx_from_images, get_exif_details,
                            make_video_gsv_compatible, overlay_nadir,
-                           get_streams, delete_files)
+                           get_streams, delete_files, set_date_metadata)
 from datetime import timedelta
 from .gsv import GSV
 from .sql_helper import DB
@@ -151,7 +151,9 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
             logger.info(f"copying metadata from first image into {final_mp4_file}")
             copy_metadata_from_file(first_image['newpath'], final_mp4_file)
+        
             delete_files(mp4_file)
+            set_date_metadata(final_mp4_file, first_image['date'])
             videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[frame_cursor:end], gpx_file=str(gpx_file)), final_mp4_file))
 
             frame_cursor = end

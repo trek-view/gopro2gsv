@@ -153,7 +153,6 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     cmd.extend(["-y", mp4_path]) #always overwrite
 
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
-    set_date_metadata(mp4_path, date)
     return
 
 def copy_metadata_from_file(frame: Path, video: Path):
@@ -162,7 +161,7 @@ def copy_metadata_from_file(frame: Path, video: Path):
 
 def set_date_metadata(video: Path, date: datetime):
     dfm = date.isoformat().replace("-", ":")
-    run_command_silently([get_exiftool(), "-api", "QuickTimeUTC", f"-Media*Date={dfm}", f"-Track*Date={dfm}", f"-AllDates={dfm}", video])
+    run_command_silently([get_exiftool(), f"-Media*Date={dfm}", f"-Track*Date={dfm}", f"-AllDates={dfm}", video])
     delete_files(video.with_name(video.name+"_original"))
 
 def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, is_gpmd: bool):
