@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 import logging
 
-MINIMUM_REQUIRED_FRAMES = 5
+MINIMUM_REQUIRED_FRAMES = 10
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
 TIMELAPSE_MINIMUM_REQUIRED_FRAMES = 5
@@ -135,8 +135,8 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             end   = frame_cursor + FRAMES_PER_VIDEO
             if i == parts-1:
                 remaining_frames = number_of_images-end
-                if remaining_frames < 5:
-                    end -= 5
+                if remaining_frames < 10:
+                    end -= 10
             
             gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
             mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
