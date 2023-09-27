@@ -373,7 +373,7 @@ As a user you must set an `.env` file to use certain features. See `.env.sample`
 python3 gopro2gsv.py
 ```
 
-Timelapse photo to video mode:
+#### Timelapse photo to video mode:
 
 * `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
 	* e.g. `/path/to/my/directory`
@@ -383,7 +383,18 @@ Timelapse photo to video mode:
 * `--output_filepath` (required): name of video and directory for output
 	* e.g. `/path/to/my/file-out.mp4`
 
-Video to video mode:
+Example:
+
+```shell
+python3 gopro2gsv.py \
+--upload_to_streetview \
+--input_directory path/to/timelapse_photos/ \
+--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
+--output_filepath path/to/timelapse_photos/video.mp4
+--
+```
+
+#### Video to video mode:
 
 * `--input_video` (required): for timelapse video mode, the path to the `.mp4` video
 	* e.g. `/path/to/my/file-in.mp4`
@@ -392,6 +403,19 @@ Video to video mode:
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 * `--output_filepath` (required): name of video and directory for output
 	* e.g. `/path/to/my/file-out.mp4`
+
+Example:
+
+```shell
+python3 gopro2gsv.py \
+--upload_to_streetview \
+----input_video path/to/video.mp4 \
+--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
+--output_filepath path/to/video-with-nadir.mp4
+--
+```
+
+#### Check for Street View Status updates
 
 The following flag can be run in isolation to simply run update checks on all uploads that are not in `PROCESSED` or `FAILED`
 
