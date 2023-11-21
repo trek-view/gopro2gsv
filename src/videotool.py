@@ -105,7 +105,8 @@ def video_to_images(video: Path, out: Path, framerate:int=None):
 
     fps, gps_points, frames = get_gps_data(metadata, framerate)
     frames_dir = out/"_preprocessing"
-    frames_dir.mkdir(exist_ok=True, parents=True)
+    delete_files(frames_dir)
+    frames_dir.mkdir(parents=True)
     numframes = splitvideo(video, frames_dir/"FRAME-%05d.jpg", framerate)
     assert abs(numframes-len(frames))<3, "extracted frames less than anticipated frames"
     first_frame_path = frames_dir/("FRAME-%05d.jpg"%1)

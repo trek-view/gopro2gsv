@@ -159,7 +159,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             delete_files(frames_dir)
             logger.info(f"--keep_extracted_frames passed, moving processed frames into `{frames_dir}`")
             shutil.move(frame_glob.parent, frames_dir)
-        delete_files(frame_glob.parent)
+        delete_files(frame_glob.parent.parent)
     
     for i, (video, width, height, more, output_path) in enumerate(videos):
         name, _ = os.path.splitext(output_path.name)
