@@ -1,13 +1,16 @@
+import os
 import pathlib, shutil
 from pathlib import Path
 import re
 
-from .shell_helper import test_image, InvalidImageException, get_exif_details_for_dir
-from .errors import FatalException
+from .utils import calculateVelocities
+
+from .shell_helper import copy_metadata_from_file, create_video_from_images, delete_files, generate_gpx_from_images, make_video_gsv_compatible, set_date_metadata, test_image, InvalidImageException, get_exif_details_for_dir
+from .errors import FatalException, GSVException
 from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
-from collections import UserDict
+from .utils import metadata_dict
 
 from logging import getLogger
 logger = getLogger("gopro2gsv.image_tool")
@@ -16,6 +19,7 @@ MAX_RE = re.compile(r"(\w{4}).*.jpg")
 FUSION_RE = re.compile(r"multishot_(\d{4})_.*.jpg")
 
 MAX_TIME_DIFFERENCE = 20
+MIN_FRAMES_PER_VIDEO = 20
 
 CAMERAS_RE = {
     "fusion": re.compile(r"(\w{4}).*.jpg"),
@@ -23,15 +27,6 @@ CAMERAS_RE = {
 }
 
 
-class metadata_dict(UserDict):
-    def __getitem__(self, key) -> str:
-        value = super().__getitem__(key)
-        if isinstance(value, list):
-            return value[0]
-        return value
-    
-    def list(self, key):
-        return super().__getitem__(key)
 
 def get_camera_attr_from_name(name) -> tuple[str, str]:
     for camera, re_exp in CAMERAS_RE.items():
@@ -92,16 +87,73 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
 
     valid_images.sort(key=lambda v: (v["date"], v["path"]))
 
+    return valid_images, invalid_files
+
+def fix_outlier(valid_images, max_acceptable_velocity, invalid_files=None):
     prev_date = valid_images and valid_images[0]["date"]
+    prev_image = valid_images and valid_images[0]
     for i, image in enumerate(valid_images):
+        error = None
         date = image["date"]
         path: pathlib.Path = image["path"]
         name = path.name
-        if (delta := date - prev_date) > timedelta(seconds=MAX_TIME_DIFFERENCE):
+        time_diff = date - prev_date
+        start_loc = prev_image["GPS:GPSLatitude"], prev_image["GPS:GPSLongitude"], prev_image["GPS:GPSAltitude"]
+        end_loc   = image["GPS:GPSLatitude"], image["GPS:GPSLongitude"], image["GPS:GPSAltitude"]
+        if time_diff > timedelta(seconds=MAX_TIME_DIFFERENCE):
             valid_images.pop(i)
-            raise FatalException(f"More than {MAX_TIME_DIFFERENCE} seconds between two succeeding frames: [{name}|{delta.seconds} seconds]")
+            error = GSVException(f"More than {MAX_TIME_DIFFERENCE} seconds between two succeeding frames: [{name}|{time_diff.total_seconds()} seconds]")
+        v, v_vector = calculateVelocities(start_loc, end_loc, time_diff.total_seconds())
+        if v > max_acceptable_velocity:
+            valid_images.pop(i)
+            error = GSVException(f"Velocity {v} [{v_vector}] is greater than {max_acceptable_velocity}")
+        if error:
+            image["error"] = str(error)
+            invalid_files and invalid_files.append(image)
+            logger.warn(f"{error} for {image['path']}")
+            continue
         prev_date = date
-    return valid_images, invalid_files
+        
+    return valid_images
+
+def process_into_videos(valid_images, framerate, max_length, output_filepath, frame_glob=None, global_meta_path=None):
+    if len(valid_images) < MIN_FRAMES_PER_VIDEO:
+            raise FatalException(f"At least {MIN_FRAMES_PER_VIDEO} valid frames required, found {len(valid_images) or None}")
+    videos = []
+    output_filename, _ = os.path.splitext(output_filepath.name)
+    frames_per_video = int(max_length*framerate)
+    number_of_images = len(valid_images)
+    parts = ceil(number_of_images/frames_per_video)
+    frame_cursor = 0
+    frame_glob = frame_glob or output_filepath/f"%05d.jpg"
+    for i in range(1, parts+1):
+        logger.info(f"Processing video #{i} of {parts}")
+        end   = frame_cursor + frames_per_video
+        if i == parts-1:
+            remaining_frames = number_of_images-end
+            if remaining_frames < MIN_FRAMES_PER_VIDEO:
+                end -= MIN_FRAMES_PER_VIDEO
+        
+        gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
+        mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
+        final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")
+        first_image = valid_images[frame_cursor]
+        logger.info(f"generating gpx file for video #{i} at {gpx_file}")
+        start_date = valid_images[0]["date"] + frame_cursor*timedelta(seconds=1)/framerate
+        generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file, start_date=start_date, frame_rate=framerate)
+        logger.info(f"generating video #{i} at {mp4_file}")
+        create_video_from_images(frame_glob, mp4_file, frame_cursor, end-frame_cursor, frame_rate=framerate, date=first_image['date'])
+        logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")
+        make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, framerate, is_gpmd=True)
+        logger.info(f"copying metadata from first image into {final_mp4_file}")
+        copy_metadata_from_file(global_meta_path or first_image['newpath'], final_mp4_file)
+    
+        delete_files(mp4_file)
+        set_date_metadata(final_mp4_file, first_image['date'])
+        videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[frame_cursor:end], gpx_file=str(gpx_file)), final_mp4_file))
+
+        frame_cursor = end
+    return videos
 
 def write_images_to_dir(images: list[dict], dir: Path):
     dir.mkdir(exist_ok=True)

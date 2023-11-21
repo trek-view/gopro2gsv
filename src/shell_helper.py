@@ -6,6 +6,8 @@ from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 from xml.etree import ElementTree
 import tempfile
 import importlib.resources
+
+from .utils import metadata_dict
 from .errors import FatalException
 
 from logging import getLogger
@@ -59,17 +61,12 @@ def parse_exif_metadata(content: bytes):
     for root in doc.getElementsByTagName("rdf:Description"):
         file = Path(root.getAttribute("rdf:about"))
         child: Element = None
-        metadata = dict(path=file)
+        metadata = metadata_dict(path=file)
+        metadata["namespaces"] = [attr[6:] for attr in root.attributes.keys() if attr.startswith('xmlns:')]
         for child in root.childNodes:
             if child.nodeType == child.ELEMENT_NODE:
                 value = getText(child)
-                if first := metadata.get(child.tagName):
-                    if isinstance(first, list):
-                        metadata[child.tagName].append(value)
-                    else:
-                        metadata[child.tagName] = [first, value]
-                else:
-                    metadata[child.tagName] = value
+                metadata[child.tagName] = value
         out_vals[file] = metadata
     return out_vals
 
@@ -107,13 +104,11 @@ def test_image(exif_data):
             raise InvalidImageException(f"Image's exif data missing `{key}`")
     return True
 
-def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
+def generate_gpx_from(dir: Path):
     if not dir.exists():
         raise FatalException("Attempted to generate gpx from non-existent timelapse directory")
     output = run_command_silently([get_exiftool(), "-fileOrder", "gpsdatetime", "-p", ASSETS_PATH/"gpx.fmt", dir], stderr=subprocess.DEVNULL)
-    with gpx_path.open("w") as f:
-        f.write(output)
-    return
+    return output
 
 
 def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFAULT_FRAME_RATE, start_date=None):
@@ -128,9 +123,9 @@ def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFA
     for i, image in enumerate(images):
         longitude = float(image['GPS:GPSLongitude'])
         latitude  = float(image[ 'GPS:GPSLatitude'])
-        if image['GPS:GPSLongitudeRef'] == "W":
+        if image.get('GPS:GPSLongitudeRef', None) == "W":
             longitude = -longitude
-        if image['GPS:GPSLatitudeRef'] == "S":
+        if image.get('GPS:GPSLatitudeRef', None) == "S":
             latitude = -latitude
         point = GPXTrackPoint(latitude=latitude, longitude=longitude, elevation=image['GPS:GPSAltitude'], time=date+i*delta)
         ext1 = ElementTree.Element("gopro2gsv:InputPhoto")
@@ -155,18 +150,40 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
     return
 
-def copy_metadata_from_file(frame: Path, video: Path):
-    run_command_silently([get_exiftool(),"-TagsFromFile",frame, "-all:all>all:all", video])
+# returns number of frames
+def splitvideo(video:Path, out:Path, framerate=None) -> int:
+    if os.listdir(out.parent):
+        raise FatalException(f"Cannot split into `{str(out.parent)}`, directory not empty")
+    cmd = [get_ffmpeg(), "-i", video]
+    if framerate:
+        cmd.extend(["-r", str(framerate)])
+    _, ext = os.path.splitext(video)
+    if ext == '.360':
+        cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect[out]', '-map', '[out]'])
+    cmd.extend(["-y", out]) #always overwrite
+
+    run_command_silently(cmd, stderr=subprocess.DEVNULL)
+    return len(os.listdir(out.parent))
+    
+
+def copy_metadata_from_file(from_: Path, to_: Path):
+    run_command_silently([get_exiftool(),"-TagsFromFile",from_, "-all:all>all:all", to_])
+    delete_files(to_.with_name(to_.name+"_original"))
+
+def set_exif_metadata(video:Path, *key_values: tuple[str,str]):
+    args = []
+    for k, v in key_values:
+        args.append(f"-{k}={v}")
+    run_command_silently([get_exiftool(), *args, video])
     delete_files(video.with_name(video.name+"_original"))
 
 def set_date_metadata(video: Path, date: datetime):
     dfm = date.isoformat().replace("-", ":")
-    run_command_silently([get_exiftool(), f"-Media*Date={dfm}", f"-Track*Date={dfm}", f"-AllDates={dfm}", video])
-    delete_files(video.with_name(video.name+"_original"))
+    set_exif_metadata(video, ("Media*Date", dfm), ("Track*Date", dfm), ("AllDates",dfm))
 
-def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, is_gpmd: bool):
+def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, framerate, is_gpmd: bool):
     type_flag = "-g" if is_gpmd else "-c"
-    run_command_silently([sys.executable, MODULE_PATH/"telemetry_injector/telemetry-injector.py", type_flag, "-v", video, "-x", gpx, "-o", output])
+    run_command_silently([sys.executable, MODULE_PATH/"telemetry_injector/telemetry-injector.py", type_flag, "-v", video, "-x", gpx, "-o", output, "-r", framerate])
     return
 
 def get_ffmpeg():

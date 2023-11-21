@@ -34,10 +34,11 @@ def main():
     parser.add_argument("-x", "--gpx", help="gpx file")
 
     parser.add_argument("-o", "--output", help="output file")
+    parser.add_argument("-r", "--framerate", help="framerate", default=5, type=float)
 
     args = parser.parse_args()
 
-    framerate = 5
+    framerate = args.framerate
 
     if args.inject_camm_metadata or args.inject_gpmd_metadata:
         metadata = b''

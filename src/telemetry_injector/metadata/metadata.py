@@ -20,6 +20,28 @@ from spatialmedia import metadata_utils
 def console(d):
     print(d)
 
+
+def calculateVelocities(start, end, time_diff):
+    end_latitude, end_longitude, end_altitude = end
+    start_latitude, start_longitude, start_altitude = start
+    distance = haversine((start_latitude, start_longitude), (end_latitude, end_longitude), Unit.METERS)
+
+    brng = Geodesic.WGS84.Inverse(start_latitude, start_longitude, end_latitude, end_longitude)
+    azimuth1 = (brng['azi1'] + 360) % 360
+    azimuth2 = (brng['azi2'] + 360) % 360
+    AC = math.sin(math.radians(azimuth1))*distance
+    BC = math.cos(math.radians(azimuth2))*distance
+    alt = end_altitude - start_altitude
+    if time_diff > 0:
+        v_east = AC/time_diff
+        v_north = BC/time_diff
+        v_up = alt/time_diff
+    else:
+        v_east = 0.5
+        v_north = 0.5
+        v_up = 0
+    return v_east, v_north, v_up
+
 def latLngToDecimal(latLng):
     deg, minutes, seconds, direction = re.split('[deg\'"]+', latLng)
     return (float(deg.strip()) + float(minutes.strip())/60 + float(seconds.strip())/(60*60)) * (-1 if direction.strip() in ['W', 'S'] else 1)
@@ -148,22 +170,7 @@ def create_video_from_images(img_dir, output_dir, output_vid, o_vid, framerate, 
             end_longitude = latLngToDecimal(g_next['GPSLongitude'])
             end_altitude = getAltitudeFloat(g_next['GPSAltitude'])
             
-            distance = haversine((start_latitude, start_longitude), (end_latitude, end_longitude), Unit.METERS)
-
-            brng = Geodesic.WGS84.Inverse(start_latitude, start_longitude, end_latitude, end_longitude)
-            azimuth1 = (brng['azi1'] + 360) % 360
-            azimuth2 = (brng['azi2'] + 360) % 360
-            AC = math.sin(math.radians(azimuth1))*distance
-            BC = math.cos(math.radians(azimuth2))*distance
-            alt = end_altitude - start_altitude
-            if time_diff > 0:
-                v_east = AC/time_diff
-                v_north = BC/time_diff
-                v_up = alt/time_diff
-            else:
-                v_east = 0.5
-                v_north = 0.5
-                v_up = 0
+            v_east, v_north, v_up = calculateVelocities((start_latitude, start_longitude, start_altitude), (end_latitude, end_longitude, end_altitude), time_diff)
         else:
             v_east = 0.5
             v_north = 0.5
