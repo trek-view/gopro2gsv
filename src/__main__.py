@@ -15,7 +15,7 @@ from .imagetool import (fix_outlier, get_files_from_dir, process_into_videos,
 from .shell_helper import (delete_files, get_exif_details, get_streams,
                            overlay_nadir)
 from .sql_helper import DB
-from .videotool import tag_all_images, video_to_images
+from .videotool import MINIMUM_GPS_POINTS, tag_all_images, video_to_images
 
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
@@ -142,24 +142,40 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             output_filepath = input_vid.with_name(f"{name}-gopro2gsv_output")
         else:
             output_filepath = Path(args.output_filepath)
-
-        invalid_files = []
-        valid_images, video_fps, frame_glob = video_to_images(input_vid, output_filepath, framerate=args.extract_fps)
-        if args.keep_extracted_frames:
-            logger.info(f"Tagging {len(valid_images)} images")
-            tag_all_images(valid_images)
-        valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec, invalid_files)
+        setLogFile(logger, log_filepath)
         
-        database.record_timelapse(invalid_files)
-        videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, output_filepath, frame_glob=frame_glob)
+        if not args.extract_fps:
+            streams = get_streams(input_vid)
+            if len(list(filter(lambda x: x.type == "video", streams))) > 1:
+                raise FatalException("More than one video stream in input_video")
+            metadata = get_exif_details(input_vid)
+            valid_frames = 0
+            for k, v in metadata.items():
+                if k.endswith(":GPSDateTime") and k.startswith("Track"):
+                    valid_frames += len(v)
+            if valid_frames < MINIMUM_GPS_POINTS:
+                raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
+            width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
+            logger.info(f"Found {width}x{height} video with {valid_frames} valid frames at {input_vid}")
+            videos.append((input_vid, width, height, metadata, output_filepath))
+        else:
+            invalid_files = []
+            valid_images, video_fps, frame_glob = video_to_images(input_vid, output_filepath, framerate=args.extract_fps)
+            if args.keep_extracted_frames:
+                logger.info(f"Tagging {len(valid_images)} images")
+                tag_all_images(valid_images)
+            valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec, invalid_files)
+            
+            database.record_timelapse(invalid_files)
+            videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, output_filepath, frame_glob=frame_glob)
 
-        if args.keep_extracted_frames:
-            output_filename, _ = os.path.splitext(output_filepath.name)
-            frames_dir = output_filepath.with_name(f"{output_filename}-images")
-            delete_files(frames_dir)
-            logger.info(f"--keep_extracted_frames passed, moving processed frames into `{frames_dir}`")
-            shutil.move(frame_glob.parent, frames_dir)
-        delete_files(frame_glob.parent.parent)
+            if args.keep_extracted_frames:
+                output_filename, _ = os.path.splitext(output_filepath.name)
+                frames_dir = output_filepath.with_name(f"{output_filename}-images")
+                delete_files(frames_dir)
+                logger.info(f"--keep_extracted_frames passed, moving processed frames into `{frames_dir}`")
+                shutil.move(frame_glob.parent, frames_dir)
+            delete_files(frame_glob.parent.parent)
     
     for i, (video, width, height, more, output_path) in enumerate(videos):
         name, _ = os.path.splitext(output_path.name)
