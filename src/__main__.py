@@ -142,12 +142,13 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             output_filepath = input_vid.with_name(f"{name}-gopro2gsv_output")
         else:
             output_filepath = Path(args.output_filepath)
+        log_filepath = output_filepath.with_name(os.path.splitext(output_filepath.name)[0] + ".log")
         setLogFile(logger, log_filepath)
         
         if not args.extract_fps:
             streams = get_streams(input_vid)
             if len(list(filter(lambda x: x.type == "video", streams))) > 1:
-                raise FatalException("More than one video stream in input_video")
+                raise FatalException("More than one video stream in input_video, consider passing `--extract_fps`")
             metadata = get_exif_details(input_vid)
             valid_frames = 0
             for k, v in metadata.items():
