@@ -16,6 +16,7 @@ from .shell_helper import (delete_files, get_exif_details, get_streams,
                            overlay_nadir)
 from .sql_helper import DB
 from .videotool import MINIMUM_GPS_POINTS, tag_all_images, video_to_images
+from .constants import *
 
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
@@ -159,6 +160,9 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
                     valid_frames += len(v)
             if valid_frames < MINIMUM_GPS_POINTS:
                 raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
+            ptype = metadata.get("XMP-GSpherical:ProjectionType", None)
+            if ptype != EQUIRECTANGULAR:
+                raise FatalException(f"Expected equirectangular video, got `{ptype}`")
             width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
             logger.info(f"Found {width}x{height} video with {valid_frames} valid frames at {input_vid}")
             videos.append((input_vid, width, height, metadata, output_filepath))

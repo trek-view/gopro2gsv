@@ -13,8 +13,9 @@ from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
 from collections import UserDict
+from .constants import *
 
-MINIMUM_GPS_POINTS = 10
+
 
 def get_gps_data(metadata, video_fps=None):
     groups = []
