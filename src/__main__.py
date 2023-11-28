@@ -36,6 +36,7 @@ def newLogger(name: str) -> logging.Logger:
     return logging.getLogger("gopro2gsv")
 
 def setLogFile(logger, file: Path):
+    file.parent.mkdir(parents=True, exist_ok=True)
     logger.info(f"Saving log to `{file.absolute()}`")
     handler = logging.FileHandler(file, "w")
     handler.formatter = logging.Formatter(fmt='%(levelname)s %(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
@@ -69,7 +70,7 @@ def parse_args():
     group.add_argument("--refresh_upload_status", action="store_true", help="rechecks all GSV uploaded sequences not in PROCESSED or FAILED states")
 
     parser.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
-    parser.add_argument("--size_of_nadir", type=valid_nadir_range, help="Percentage of video the nadir will cover", default=150)
+    parser.add_argument("--size_of_nadir", type=valid_nadir_range, help="Percentage of video the nadir will cover", default=25)
 
     parser.add_argument("--output_filepath", help="Output filepath for video")
     parser.add_argument("--upload_to_streetview", action="store_true", help="Upload image to StreetView")
