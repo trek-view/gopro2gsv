@@ -30,8 +30,8 @@ class metadata_dict(UserDict):
         pass
 
 def calculateVelocities(start, end, time_diff):
-    end_latitude, end_longitude, end_altitude = end
-    start_latitude, start_longitude, start_altitude = start
+    end_latitude, end_longitude, end_altitude = map(float, end)
+    start_latitude, start_longitude, start_altitude = map(float, start)
     distance = haversine((start_latitude, start_longitude), (end_latitude, end_longitude), Unit.METERS)
 
     brng = Geodesic.WGS84.Inverse(start_latitude, start_longitude, end_latitude, end_longitude)
