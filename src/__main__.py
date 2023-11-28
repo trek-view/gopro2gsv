@@ -164,7 +164,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             if ptype != EQUIRECTANGULAR:
                 raise FatalException(f"Expected equirectangular video, got `{ptype}`")
             width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
-            logger.info(f"Found {width}x{height} video with {valid_frames} valid frames at {input_vid}")
+            logger.info(f"Found {width}x{height} video with {valid_frames} valid GPS points at {input_vid}")
             videos.append((input_vid, width, height, metadata, output_filepath))
         else:
             invalid_files = []
