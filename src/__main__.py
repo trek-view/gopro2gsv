@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument("--force_relogin", action="store_true", help="Don't use saved authentication")
     parser.add_argument("--outlier_speed_meters_sec", "--outlier_speed", default=40, type=int, help="When a destination photo has a speed greater than the specified outlier speed it will be removed")
     parser.add_argument("--extract_fps", default=None, help="", type=float, choices=VALID_EXTRACT_FPS)
-    parser.add_argument("--max_output_video_secs", default=60, help="Maximum length of video in seconds")
+    parser.add_argument("--max_output_video_secs", default=60, help="Maximum length of video in seconds", type=int)
     parser.add_argument("--keep_extracted_frames", action="store_true", help="store a copy of the extracted images used to create final video (with geotags). ")
 
     args = parser.parse_args()
