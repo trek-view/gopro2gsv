@@ -60,14 +60,26 @@ def get_gps_data(metadata, video_fps=None):
     frames = []
     for f in range(num_frames):
         frame_time = f/video_fps
-        if not (gps_cursor+1 == len(points) or frame_time < points[gps_cursor+1]["media_time"]):
-            gps_cursor += 1
-        point = points[gps_cursor]
+        gps_cursor, point = get_point_by_time(points[gps_cursor:], frame_time)
         frame = point.copy()
         frame['frame_time'] = frame_time
         frames.append(frame)
     return (video_fps, points, frames)
 
+def get_point_by_time(points, frame_time):
+    ret_point = None
+    ret_id = 0
+    for i, point in enumerate(points):
+        if point['media_time'] <= frame_time:
+            # print(point['media_time'], frame_time)
+            if ret_point is None or point['media_time'] >= ret_point['media_time']:
+                ret_point = point
+                ret_id = i
+        else:
+            break
+
+    return ret_id, ret_point
+        
 def validate_input_video(name, metadata):
     _, mode = os.path.splitext(name)
     if mode == ".360":
@@ -111,11 +123,12 @@ def video_to_images(video: Path, out: Path, framerate:int=None):
     assert abs(numframes-len(frames))<3, "extracted frames less than anticipated frames"
     first_frame_path = frames_dir/("FRAME-%05d.jpg"%1)
     copy_metadata_from_file(video, first_frame_path)
+    first_frame = get_exif_details(first_frame_path)
     for i in range(min(numframes, len(frames))):
         frames[i]["path"] = frames_dir/("FRAME-%05d.jpg"%(i+1))
         frames[i]["newpath"] = frames[i]["path"]
-        frames[i]["File:ImageWidth"] = 1
-        frames[i]["File:ImageHeight"] = 1
+        frames[i]["File:ImageWidth"] = first_frame["File:ImageWidth"]
+        frames[i]["File:ImageHeight"] = first_frame["File:ImageHeight"]
     tag_image(frames[0])
     return frames, fps, frames_dir/"FRAME-%05d.jpg"
 
