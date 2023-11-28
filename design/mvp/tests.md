@@ -70,7 +70,7 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode2/test1/hero_photos.mp4
 ```
 
-### Testing smooting with one bad GPS point (with custom value 20m/s set)
+### Testing smooting with two bad GPS points (with custom value 20m/s set)
 
 A note on how to corrupt GPS (for this test case smoothing)
 
@@ -110,6 +110,13 @@ python3 gopro2gsv.py \
 
 Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 13 = 9.08 videos. Expected 11 videos due to mimium frame. The first eight 00:00:13 log (covers 104 seconds, leaving 14 seconds left). Thus second to last video (ninth) should have 20 frames (4 seconds) removed so will equal 00:00:09 seconds. And thus the final video (tenth) will be 00:00:05 seconds long.
 
+### Testing with simplist in/out settings
+
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/UKHB001v205-frames-removed/ \
+	--output_filepath tests/output/mode2/test4/UKHB001v205-frames-removed.mp4
+```
 =========
 
 ## Mode 3 (equirectangular mp4 video -> timelapse frames -> final video)
@@ -182,6 +189,15 @@ python3 gopro2gsv.py \
 
 187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:14.800.
 
+### Extract frames from video input at 0.5 FPS and rebuild video with normal length (300 frames)
+
+```shell
+python3 gopro2gsv.py \
+	--input_video tests/ski/GS016843.mp4 \
+	--extract_fps 0.5 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode3/test1/GS016843.mp4
+```
 
 
 

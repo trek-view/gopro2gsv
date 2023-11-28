@@ -408,10 +408,9 @@ This will write the following fields into the photos
  <tr><td>GPS:GPSAltitude</td><td>157.641 m</td></tr>
 </tbody></table>
 
-Now all photos are tagged like images we can use the same logic pipeline as mode 2. See 2d: Processing frames,.
+Now all photos are tagged like images we can use the same logic pipeline as mode 2. See 2d: Processing frames.
 
-
-
+### Mode 4: .360 mode -> max2sphere -> timelapse frames -> final video (for MAX cameras)
 
 
 
