@@ -33,12 +33,12 @@ However, there are many cases where user will want to add a nadir.
 
 As such, user can enter GoPro videos to GoPro2GSV. They will be outputted with a nadir now added to the video track, however, all other tracks will remain the same.
 
-#### User options on input
+#### 1a: User options on input
 
 * custom nadir file
 * custom nadir size
 
-#### Validation
+#### 1b: Validation
 
 GoPro2GSV validates the video input before processing.
 
@@ -55,7 +55,7 @@ This can be done using exiftool as follows;
 exiftool -ee -G3 -api LargeFileSupport=1 -ProjectionType -MetaFormat -GPSDateTime <DIRECTORY NAME>.mp4
 ```
 
-#### Adding a nadir
+#### 1c: Adding a nadir
 
 Helpful supporting information for this section:
 
@@ -79,27 +79,38 @@ A simple walk-through of the process is described here: https://www.trekview.org
 
 The output video matches the input video for quality and for contained tracks (e.g. video, audio, telemetry, etc.).
 
+#### 1d: Output
+
+* `<DIRECTORY NAME ENTERED IN INPUT>/`
+	* `<VIDEO NAME ENTERED IN INPUT>.gpx`: the GPX file created from the final video
+	* `<VIDEO NAME ENTERED IN INPUT>.mp4`: the final video file
+	* `<VIDEO NAME ENTERED IN INPUT>.log`: a log detailing a breakdown of script run
+
 ### Mode 2: equirectangular timelapse frames -> final video
 
-.jpg timelapse images from the GoPro MAX or Fusion cameras can be converted into a video.
+`.jpg` timelapse images from the GoPro MAX or Fusion cameras can be converted into a video.
 
-#### User options on input
+#### 2a: User options on input
 
 * custom nadir file
 * custom nadir size
 * smooth GPS
+* maximum output video length
 
-#### Validation
+#### 2b: Validation
 
 GoPro2GSV validates image inputs before processing.
 
-It does this by checking each images metadata as follows;
+**Note:** this does not apply to images entering the pipeline via other modes (e.g. equirectangular mp4 video -> timelapse frames -> final video)
 
-1. GoPro2GSV checks the directory only contains `.jpg` files (case insensitive). It ignores any hidden dot files that might be present, however, will fail if any other type of file or directory is detected.
-2. GoPro2GSV checks the filename prefixes all match to a single timelapse recorded on the camera.
+It does this by checking the image metadata of all images entered as follows;
+
+1. GoPro2GSV checks the directory for `.jpg` files (case insensitive). It ignores any other files that might be present.
+2. Checks there are >=20 frames in the input
+3. GoPro2GSV checks the filename prefixes all match to a single timelapse recorded on the camera.
 	* for the MAX the first 4 letter must always be the same, e.g. `GSAA0001.JPG`, `GSAA0002.JPG`
 	* for the FUSION the 4 numbers after `MULTISHOT_` must always be the same, e.g. `MULTISHOT_0001_000001.jpg`, `MULTISHOT_0001_000002.jpg`
-3. GoPro2GSV check the metadata of all valid images from previous step using `exiftool`, and images that are not valid are discarded;
+4. GoPro2GSV checks the metadata of all valid images from previous step using `exiftool`, and images that are not valid are discarded;
 	* file extension must be `.jpg` (case insensitive)
 	* `XMP-GPano:ProjectionType` must be equal to `equirectangular`
 	* `GPS:GPSLatitudeRef` must be present
@@ -110,23 +121,21 @@ It does this by checking each images metadata as follows;
 	* `GPS:GPSAltitude` must be present
 	* `GPS:GPSTimeStamp` must be present
 	* `GPS:GPSDateStamp` must be present
-4. GoPro2GSV checks all valid images from previous step have the same dimensions by ensuring all images have the same values for `File:ImageWidth` and `File:ImageWidth` properties
-5. GoPro2GSV sorts all valid images from previous step by time (`GPS:GPSDateStamp+GPS:GPSDateStamp`), earliest to latest.
-6. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >20 seconds. If true then the whole directory is not considered and an `ERROR` log is reported
-7. GoPro2GSV checks that a directory with all valid images from previous step has >=10 valid images after the previous step. If <10 valid images then the whole directory is not considered and an `ERROR` log is reported
-8. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
-9. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
-10. All valid images in each timelapse (directory) are now ready to be proccessed. A GPX file is created from the valid images as follows;
+5. GoPro2GSV checks all valid images from previous step have the same dimensions by ensuring all images have the same values for `File:ImageWidth` and `File:ImageHeight` properties
 
 ```shell
-exiftool -fileOrder gpsdatetime -p gpx.fmt <DIRECTORY NAME> <DIRECTORY NAME>.gpx
+exiftool -ee -G3 -api LargeFileSupport=1 -ProjectionType -GPSLatitudeRef -GPSLatitude -GPSLongitudeRef -GPSLongitude -GPSAltitudeRef -GPSAltitude -GPSTimeStamp -GPSDateStamp -ImageWidth -ImageHeight  <IMAGE>.jpg
 ```
 
-Note, the about command assumes that only the valid images are in the directory.
+6. GoPro2GSV sorts all valid images from previous step by time (`GPS:GPSDateStamp+GPS:GPSDateStamp`), earliest to latest.
+7. GoPro2GSV checks that time between consecutive images (`GPS:GPSDateStamp+GPS:GPSDateStamp`) is not >20 seconds. If true then the whole directory is not considered and an `ERROR` log is reported
+8. GoPro2GSV checks that a directory with all valid images from previous step has >=20 valid images after the previous step. If <20 valid images then the whole directory is not considered and an `ERROR` log is reported
+8. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
+9. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
 
-#### Smoothing GPS
+#### 2c: Smoothing GPS
 
- In some cases, GPS data is erroneous. e.g. the distance or speed between two consecutive points by time is clearly to fast (e.g. 1000 km/h speed)
+In some cases, GPS data is erroneous. e.g. the distance or speed between two consecutive points by time is clearly to fast (e.g. 1000 km/h speed)
 
 There are many ways to get rid of outlying points like this, here are a few examples; https://gis.stackexchange.com/questions/19683/what-algorithm-should-i-use-to-remove-outliers-in-trace-data
 
@@ -134,22 +143,33 @@ User can set an outlier "speed" at input.
 
 Default if not passed is 40 meters / second (144 km/h).
 
-When user passes this flag, they can enter any whole number
+When user passes this flag, they can enter any whole number.
 
-When a destination photo has a speed greater than the specified outlier speed it will be removed (and logged) from the input photos considered to produce a video (similar to validation logic to when photos in input have no GPS)                              
+For the images that remain after initial validation, when a destination photo has a speed greater than the specified outlier speed it will be removed (and logged) from the input photos considered to produce a video (similar to validation logic to when photos in input have no GPS).
 
-#### Processing frames
+Like before, GoPro2GSV tracks the data of each timelapse image, including those that failed GPS smoothing, with information about why they failed.
+
+#### 2d: Processing frames
+
+All valid images in each timelapse (directory) are now ready to be processed. A GPX file is created from the valid images as follows;
+
+```shell
+exiftool -fileOrder gpsdatetime -p gpx.fmt <DIRECTORY NAME> <DIRECTORY NAME>.gpx
+```
+
+Note, the about command assumes that only the valid images are in the directory (thus this directory should only contain the validated videos).
 
 There are three distinct parts of the video created from the validated images;
 
 * video track: the video made from the images
-* telemetry track: the telemetry track created from the image metadata (currently only GPMF)
-* video file metadata: the file metadata
+* telemetry track: the telemetry track created from the GPS data
+* video file metadata: the video file metadata (e.g. the equirectangular definition)
 
+##### 2d: Processing frames - video track
 
 Helpful supporting information for this section:
 
-* Publising a video to StreetView API: https://www.trekview.org/blog/2022/create-google-street-view-video-publish-api/
+* Publishing a video to StreetView API: https://www.trekview.org/blog/2022/create-google-street-view-video-publish-api/
 * H265 encoding in ffmpeg: https://trac.ffmpeg.org/wiki/Encode/H.265
 
 Video processing can be done by ffmpeg as follows
@@ -165,7 +185,7 @@ Let's break that down:
 * `-c:v libx264` is an abbreviated version of codec:v. Encodes the video using the libx264 codec (H264).
 * `<DIRECTORY NAME>` is the directory name of the timelapse images
 
-Note, this is purely for example purposes. The resulting video should be of the same quality as the input (so might need some more ffmpeg flags to be included).
+The resulting video is of almost the same quality as the input.
 
 [According to many ad-hoc observations in various Google StreetView groups](https://www.facebook.com/groups/366117726774216), StreetView servers also appear to prefer shorter segments, often rejecting longer videos. Again, this is undocumented but I will play it safe and pack videos with a length not exceeding 60 seconds. 
 
@@ -173,7 +193,7 @@ This means at a frame rate of 5 FPS (0.2 seconds per frame), each video will con
 
 As such, a sequence with 720 images will create three videos; two with 300 frames (1 min each) and one with 120 frames (24 seconds long). Each video name is appended with a number based on order, e.g. `timelapse_0001.mp4`, `timelapse_0002.mp4`.
 
-###### GPMF/CAMM track
+##### 2d: Processing frames - telemetry track
 
 Helpful supporting information for this section:
 
@@ -188,15 +208,13 @@ Helpful supporting information for this section:
 * Setting times between images https://www.trekview.org/blog/2022/turn-gopro-timewarp-video-into-timelapse-images/
 * Proof of concept implementation: https://github.com/trek-view/telemetry-injector/tree/dep
 
-GPMF/CAMM is a video telemetry standard embedded as a track to MP4 videos.
+GPMF is a video telemetry standard embedded as a track to MP4 videos.
 
-Before the telemetry needs to be adjuste to match framerate.
+Before the telemetry track is created, the image times need to be adjusted to match final video framerate (5 FPS).
 
-By setting the framerate at a fixed 5 FPS (in the video track step) we totally ignore the actual time spacing between photos, but that doesn’t matter.
+By setting the framerate at a fixed 5 FPS (in the video track step) we totally ignore the actual time spacing between photos, but that does not matter for our purposes. That is because the real time spacing between photos does not always matter when it comes to StreetView (e.g. Google does not really care if photo was taken at the time reported). There are exceptions (e.g. where times between photos are very long), but due to validation in GoPro2GSV this does not impact us.
 
-The real time spacing between photos does not matter when it comes to StreetView (e.g. Google does not really care if photo was taken at the time reported).
-
-However, it does matter the time spacing between GPS points matches the time spacing between the frames in the video (so that the correct GPS position matches the correct frame).
+However, it is extremely important the time spacing between GPS points matches the time spacing between the frames in the video (so that the correct GPS position matches the correct frame, else the frame will be aligned to the wrong position on the map).
 
 To do this, GoPro2GSV first modified the `GPS:GPSTimeStamp` and `GPS:GPSDateStamp` values in the images.
 
@@ -204,14 +222,16 @@ The first image (by time) in the timelapse remains the same. From there, each su
 
 For example,
 
-* Image 1, original time = `2023-08-01T09:00:00.000` , modified time = `2023-08-01T09:00:00.000`
-* Image 2, original time = `2023-08-01T09:00:10.000` , modified time = `2023-08-01T09:00:00.200`
-* Image 3, original time = `2023-08-01T09:00:13.000` , modified time = `2023-08-01T09:00:00.400`
-* Image 4, original time = `2023-08-01T09:00:17.380` , modified time = `2023-08-01T09:00:00.600`
+* Image 1, original `GPS:GPSTimeStamp` = `2023-08-01T09:00:00.000` , modified `GPS:GPSTimeStamp` = `2023-08-01T09:00:00.000`
+* Image 2, original `GPS:GPSTimeStamp` = `2023-08-01T09:00:10.000` , modified `GPS:GPSTimeStamp` = `2023-08-01T09:00:00.200`
+* Image 3, original `GPS:GPSTimeStamp` = `2023-08-01T09:00:13.000` , modified `GPS:GPSTimeStamp` = `2023-08-01T09:00:00.400`
+* Image 4, original `GPS:GPSTimeStamp` = `2023-08-01T09:00:17.380` , modified `GPS:GPSTimeStamp` = `2023-08-01T09:00:00.600`
 
-Now that the times are corrected, the GPMF or GPMD track can be created for the video.
+Now that the times are corrected, the GPMF track can be created for the video.
 
-###### Video file metadata
+TODO: FIX BROKEN LINKS TO TELEMETRY INJECTOR
+
+##### 2d: Processing frames - video file metadata
 
 Helpful supporting information for this section:
 
@@ -236,5 +256,40 @@ cd spatialmedia
 python spatialmedia -i demo-video-no-meta.mp4 demo-video-with-meta.mp4
 ```
 
+#### 2e: Adding a nadir
 
+Same as for mode 1.
+
+#### 2f: Output
+
+* `<DIRECTORY NAME ENTERED IN INPUT>/`
+	* `<VIDEO NAME ENTERED IN INPUT>-<N>.gpx`: the GPX file created from the final video
+	* `<VIDEO NAME ENTERED IN INPUT>-<N>.mp4`: the final video file
+	* `<VIDEO NAME ENTERED IN INPUT>-<N>.log`: a log detailing a breakdown of script run
+
+Note, in the case of image inputs where more than one video is created (as video exceed max length set), there will be multiple `.gpx`, `.mp4`, and `.log` files. `-<N>` is the count of these files, starting at `1`, e.g. `my_directory_name-1.gpx`, `my_directory_name-1.mp4`, `my_directory_name-1.log`, `my_directory_name-2.gpx`, etc.
+
+##### 2f: Output - A note on max video length and frames
+
+An output video should always have 20 frames (is 4 seconds long). The reason for this is Street View will reject videos with <=10 GPS points.
+
+This is simple if the output video length is shorter than the maximum video length defined by the user (or the default which is 300 frames / 1 minute length).
+
+To ensure second, third etc., videos outputted always have 20 or more frames, and thus 20 or more GPS points, if a  second, third etc. is needed, gopro2gsv packs videos to to 20 frames shorter than the maximum video length.
+
+**Example 1:**
+
+Lets say 302 frames are used in the input (and all pass validation). The user sets a maximum output video length of 20 seconds (100 frames).
+
+302 / 5 = 60.4 seconds. Therefore 4 videos will result.
+
+However, the fourth video is less than 20 frames (0.4 seconds = 2 frames).
+
+Thus the first and second video will pack to 100 frames (20 seconds). The third will pack to 80 frames (16 seconds). The fourth video will pack to 22 frames (4.4 seconds)
+
+**Example 2:**
+
+Lets say 290 frames are used in the input (and all pass validation). The user sets a maximum output video length of 20 seconds (100 frames).
+
+290 / 5 = 58 seconds. Therefore 3 videos will result. As no videos less than 20 frames, no need to account for videos that don't meet 20 frame requirements.
 
