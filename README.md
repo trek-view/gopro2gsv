@@ -81,10 +81,10 @@ python3 gopro2gsv.py
 
 The options available to run differ by mode as follows;
 
-#### Timelapse photo to video mode:
+#### Mode 1: equirectangular mp4 video -> final video
 
-* `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
-	* e.g. `/path/to/my/directory`
+* `--input_video` (required): for timelapse video mode, the path to the `.mp4` video
+	* e.g. `/path/to/my/file-in.mp4`
 * `--path_to_nadir` (optional): a square nadir to be added to the images.
 	* e.g. `/path/to/nadir.png`
 * `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
@@ -93,36 +93,40 @@ The options available to run differ by mode as follows;
 	* e.g. `/path/to/my/file-out.mp4`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
+#### Mode 2: equirectangular timelapse frames -> final video
 
-Example:
-
-```shell
-python3 gopro2gsv.py \
---upload_to_streetview \
---input_directory path/to/timelapse_photos/ \
---path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
---output_filepath path/to/timelapse_photos/video.mp4
-```
-
-#### Video to video mode:
-
-* `--input_video` (required): for timelapse video mode, the path to the `.mp4` video
-	* e.g. `/path/to/my/file-in.mp4`
-* `--path_to_nadir` (required): a square nadir to be added to the images
+* `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
+	* e.g. `/path/to/my/directory`
+* `--path_to_nadir` (optional): a square nadir to be added to the images.
 	* e.g. `/path/to/nadir.png`
-* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-* `--output_filepath` (required): name of video and directory for output
+* `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
+	* e.g. `25` (%)
+* `--outlier_speed_meters_sec` (optional): The maximum speed between GPS times. If speed exceeded between photos GPS times, GPS will be ignored. Default is `40` m/s (144 km/h)
+	* e.g. 20 `m/s`
+* `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
+	* e.g. `30` seconds
+* `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
 	* e.g. `/path/to/my/file-out.mp4`
+* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
-Example:
+#### Mode 3: equirectangular mp4 video -> timelapse frames -> final video
 
-```shell
-python3 gopro2gsv.py \
---upload_to_streetview \
-----input_video path/to/video.mp4 \
---path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
---output_filepath path/to/video-with-nadir.mp4
-```
+* `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
+	* e.g. `/path/to/my/directory`
+* `--extract_fps` (required): the frame rate for extraction. Can select either `5` frames per second, `5`, `4`, `2`, `1`, `0.5`, `0.2`
+	* e.g `5`
+* `--keep_extracted_frames` (optional): if passed, a copy of the extracted frames will be kept
+* `--path_to_nadir` (optional): a square nadir to be added to the images.
+	* e.g. `/path/to/nadir.png`
+* `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
+	* e.g. `25` (%)
+* `--outlier_speed_meters_sec` (optional): The maximum speed between GPS times. If speed exceeded between photos GPS times, GPS will be ignored. Default is `40` m/s (144 km/h)
+	* e.g. 20 `m/s`
+* `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
+	* e.g. `30` seconds
+* `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
+	* e.g. `/path/to/my/file-out.mp4`
+* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
 #### Check for Street View Status updates
 
