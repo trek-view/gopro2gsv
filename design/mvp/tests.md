@@ -4,7 +4,11 @@ Test cases for gopro2gsv.
 
 Download the test cases here: https://drive.google.com/drive/folders/1O1T8CR8BOBb8bfVixoPfOojhPqXUrz23?usp=drive_link
 
+=========
+
 ## Mode 1 (equirectangular mp4 video -> final video)
+
+=========
 
 ### Test inputs
 
@@ -21,6 +25,8 @@ exiftool -ee -p gpx.fmt tests/ski/GS016843.mp4 > tests/ski/GS016843.gpx
 ```
 
 ### Validations
+
+Bad case:
 
 ```shell
 python3 gopro2gsv.py \
@@ -48,11 +54,60 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode1/test2/GS016843.mp4
 ```
 
+=========
+
 ## Mode 2 (equirectangular timelapse frames -> final video)
 
+=========
+
+### Validations
+
+Bad case:
+
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/hero_photos/ \
+	--output_filepath tests/output/mode2/test1/hero_photos.mp4
+```
+
+### Testing smooting with one bad GPS point (with custom value 20m/s set)
+
+A note on how to corrupt GPS (for this test case smoothing)
+
+```shell
+exiftool -overwrite_original -GPSLatitude=40.6892 -GPSLatitudeRef=N -GPSLongitude=-74.0445 -GPSLongitudeRef=W -GPSAltitude=10 -GPSAltitudeRef="Above Sea Level" tests/UKHB001v205-some-bad-gps/GSAA7186.JPG
+exiftool -overwrite_original -GPSLatitude=20.1 -GPSLatitudeRef=N -GPSLongitude=-60.1 -GPSLongitudeRef=W -GPSAltitude=10 -GPSAltitudeRef="Above Sea Level" tests/UKHB001v205-some-bad-gps/GSAA7196.JPG
+```
+
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/UKHB001v205-some-bad-gps/ \
+	--outlier_speed_meters_sec 20 \
+	--output_filepath tests/output/mode2/test1/UKHB001v205-some-bad-gps.mp4
+```
+
+### Testing maximum output video length (simple)
+
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/UKHB001v205-frames-removed/ \
+	--max_output_video_secs 20 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode2/test2/UKHB001v205-frames-removed.mp4
+```
+
+Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 20 = 5.9 videos. Expect 6 videos.
+
+### Testing maximum output video length (where min frame per vid should be considered)
 
 
-## Mode 2 (equirectangular mp4 video -> timelapse frames -> final video)
+
+=========
+
+## Mode 3 (equirectangular mp4 video -> timelapse frames -> final video)
+
+=========
+
 
 ### Extract frames from video input at 0.5 FPS and rebuild video with normal length (300 frames)
 
