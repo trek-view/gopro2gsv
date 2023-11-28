@@ -19,7 +19,7 @@ from .videotool import MINIMUM_GPS_POINTS, tag_all_images, video_to_images
 
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
-VALID_EXTRACT_FPS = [5.0, 2.0, 1.0, 0.5, 0.2]
+VALID_EXTRACT_FPS = [5, 2, 1, 0.5, 0.2]
 
 
 def newLogger(name: str) -> logging.Logger:
@@ -48,17 +48,18 @@ def setLogFile(logger, file: Path):
 def parse_path(parser, path, is_file=True):
     p = pathlib.Path(path)
     if not p.exists():
-        parser.error(f"{p.absolute()}: no such file or directory")
+        raise argparse.ArgumentTypeError(f"{p.absolute()}: no such file or directory")
     if is_file and p.is_dir():
-        parser.error(f"{p.absolute()}: expected file, got directory")
+        raise argparse.ArgumentTypeError(f"{p.absolute()}: expected file, got directory")
     elif p.is_file() and not is_file:
-        parser.error(f"{p.absolute()}: expected directory, got file")
+        raise argparse.ArgumentTypeError(f"{p.absolute()}: expected directory, got file")
     return p
 
-def parse_extract_fps(parser, value):
-    value = float(value)
-    if value not in VALID_EXTRACT_FPS:
-        raise parser.error(f"extract_fps must be on of {VALID_EXTRACT_FPS}, got {value}")
+def valid_nadir_range(value):
+    ivalue = int(value)
+    if 5 <= ivalue <= 30:
+        return ivalue
+    raise argparse.ArgumentTypeError(f"must be between 5 and 30 (inclusive), but got {ivalue}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="GoPro to Google Street View converter")
@@ -68,6 +69,7 @@ def parse_args():
     group.add_argument("--refresh_upload_status", action="store_true", help="rechecks all GSV uploaded sequences not in PROCESSED or FAILED states")
 
     parser.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
+    parser.add_argument("--size_of_nadir", type=valid_nadir_range, help="Percentage of video the nadir will cover", default=150)
 
     parser.add_argument("--output_filepath", help="Output filepath for video")
     parser.add_argument("--upload_to_streetview", action="store_true", help="Upload image to StreetView")
@@ -186,7 +188,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             logger.info("Adding nadir to video")
             newpath = output_path.with_name(f"{name}_with-nadir.mp4")
             newpath.parent.mkdir(exist_ok=True, parents=True)
-            overlay_nadir(video, args.path_to_nadir, newpath, width, height)
+            overlay_nadir(video, args.path_to_nadir, newpath, width, height, height_ratio=args.size_of_nadir/100)
         
         # delete input video file if it's created by us
         if more.get('gpx_file') and video != newpath:
