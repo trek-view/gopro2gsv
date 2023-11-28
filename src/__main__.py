@@ -19,7 +19,7 @@ from .videotool import MINIMUM_GPS_POINTS, tag_all_images, video_to_images
 
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
-VALID_EXTRACT_FPS = [10.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.2]
+VALID_EXTRACT_FPS = [5.0, 2.0, 1.0, 0.5, 0.2]
 
 
 def newLogger(name: str) -> logging.Logger:
