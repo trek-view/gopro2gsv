@@ -96,11 +96,19 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode2/test2/UKHB001v205-frames-removed.mp4
 ```
 
-Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 20 = 5.9 videos. Expect 6 videos.
+Directory has 590 items. 590/5 (fixed frame rate packer) = 118 seconds of footage. 118/20 = 5.9 videos. The first five 00:00:20 long. The last (sixth) 00:00:18 long.
 
 ### Testing maximum output video length (where min frame per vid should be considered)
 
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/UKHB001v205-frames-removed/ \
+	--max_output_video_secs 13 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode2/test3/UKHB001v205-frames-removed.mp4
+```
 
+Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 13 = 9.08 videos. Expected 11 videos due to mimium frame. The first eight 00:00:13 log (covers 104 seconds, leaving 14 seconds left). Thus second to last video (ninth) should have 20 frames (4 seconds) removed so will equal 00:00:09 seconds. And thus the final video (tenth) will be 00:00:05 seconds long.
 
 =========
 
@@ -114,37 +122,66 @@ Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 20 = 5.9 videos. 
 ```shell
 python3 gopro2gsv.py \
 	--input_video tests/ski/GS016843.mp4 \
-	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
 	--extract_fps 0.5 \
 	--keep_extracted_frames \
-	--output_filepath tests/output/test2/GS016843.mp4
+	--output_filepath tests/output/mode3/test1/GS016843.mp4
 ```
 
 187 * 0.5 = 93.5 (94) frames = 94 / 5 = 18.8 seconds final output
 
-See image metadata:
+Test some of the extracted frames to ensure geotagging is as expected (photos are 2 seconds apart and start from the first time in GPX file)
 
-```shell
-exiftool tests/output/GS016843-test2-images/FRAME-00001.jpg # 2023:03:02 08:13:00.904Z
-exiftool tests/output/GS016843-test2-images/FRAME-00002.jpg # 2023:03:02 08:13:01.020470999Z
-exiftool tests/output/GS016843-test2-images/FRAME-00003.jpg # 2023:03:02 08:13:01.136942Z
-exiftool tests/output/GS016843-test2-images/FRAME-00003.jpg # 2023:03:02 08:13:01.253413Z
+Check GPX
+
+```xml
+      <trkpt lat="44.9164189" lon="6.5483082">
+        <ele>2324.285</ele>
+        <time>2023-03-02T08:13:00.904000Z</time>
+        <extensions>
+          <gopro2gsv:InputPhoto>tests/output/mode3/test1/GS016843.mp4/_preprocessing/FRAME-00001.jpg</gopro2gsv:InputPhoto>
+        </extensions>
+      </trkpt>
 ```
 
-## Video mode (single mp4) -> Image mode -> Video output
+```shell
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00001.jpg -GPSDateTime
+# GPS Date/Time                   : 2023:03:02 08:13:00.904Z
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00002.jpg -GPSDateTime
+# GPS Date/Time                   : 2023:03:02 08:13:02.884Z
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00003.jpg -GPSDateTime
+# GPS Date/Time                   : 2023:03:02 08:13:04.860952005Z
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00004.jpg -GPSDateTime
+# GPS Date/Time                   : 2023:03:02 08:13:06.899Z
+```
 
 ### Extract frames from video input at 0.5 FPS and rebuild video with 20 second max (100 frames)
 
 ```shell
 python3 gopro2gsv.py \
 	--input_video tests/ski/GS016843.mp4 \
-	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
 	--extract_fps 2 \
 	--max_output_video_secs 20 \
-	--output_filepath tests/output/test3/GS016843.mp4
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode3/test2/GS016843.mp4
 ```
 
-187 * 2 = 374 frames = 375 / 5 = 75 seconds final output. Thus expect 4 videos output.
 
-## Mode 2
+187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 4 videos output. The first three 00:00:20 long. The third 00:00:14.800 
+
+### Extract frames from video input at 0.5 FPS and add a nadir with 15 % height
+
+```shell
+python3 gopro2gsv.py \
+	--input_video tests/ski/GS016843.mp4 \
+	--extract_fps 2 \
+	--keep_extracted_frames \
+	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
+	--size_of_nadir 15 \
+	--output_filepath tests/output/mode3/test3/GS016843.mp4
+```
+
+187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:14.800.
+
+
+
 
