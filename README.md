@@ -85,11 +85,14 @@ The options available to run differ by mode as follows;
 
 * `--input_directory` (required): for timelapse photo mode, the path to the directory of `.jpg` images
 	* e.g. `/path/to/my/directory`
-* `--path_to_nadir` (optional): a square nadir to be added to the images
+* `--path_to_nadir` (optional): a square nadir to be added to the images.
 	* e.g. `/path/to/nadir.png`
-* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-* `--output_filepath` (required): name of video and directory for output
+* `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
+	* e.g. `25` (%)
+* `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
 	* e.g. `/path/to/my/file-out.mp4`
+* `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
+
 
 Example:
 
