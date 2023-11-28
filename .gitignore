@@ -174,3 +174,4 @@ tests
 
 *.sqlite
 *gopro2gsv.sqlite-journal
+gpx.fmt

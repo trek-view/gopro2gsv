@@ -293,3 +293,127 @@ Lets say 290 frames are used in the input (and all pass validation). The user se
 
 290 / 5 = 58 seconds. Therefore 3 videos will result. As no videos less than 20 frames, no need to account for videos that don't meet 20 frame requirements.
 
+### Mode 3: equirectangular mp4 video -> timelapse frames -> final video
+
+#### 3a: User options on input
+
+* custom nadir file
+* custom nadir size
+* extraction frame rate
+* keep extracted frames
+* smooth GPS
+* maximum output video length
+
+#### 3b: Validation
+
+Same as mode 1
+
+#### 3c: Processing
+
+On input a user defines an extraction frame rate.
+
+There are three distinct parts of the video extraction;
+
+* extract GPS: the GPS data in the video
+* extract frames: the frames in the video
+* geotag the extracted frames
+
+##### 3c: Processing - extract GPS
+
+A GPX file can be created as follows
+
+```shell
+exiftool -ee -p gpx.fmt INPUT.mp4 > INPUT.gpx
+```
+
+Note, for larger files you might encounter the error:
+
+```shell
+Warning: End of processing at large atom (LargeFileSupport not enabled)
+```
+
+I got this error when processing this 4GB video.
+
+In which case you need to enable large file support (largefilesupport) using an exiftool `.config` file. [Read this topic on the exiftool forum for more information](https://exiftool.org/forum/index.php?topic=3916.0).
+
+##### 3c: Processing - extract frames
+
+The frames can be extracted from the video as follows
+
+```shell
+ffmpeg -i INPUT.mp4 -r USER RATE img%d.jpg 
+```
+
+##### 3c: Processing - geotag the extracted frames
+
+Firstly, each frame has the following data added to it/
+
+The following fields are always fixed 
+
+* `XMP-GPano:StitchingSoftware` = gopro2gsv
+* `XMP-GPano:SourcePhotosCount` = 2 b/c GoPro 360 cameras only have 2 lenses), so values are static.
+* `XMP-GPano:UsePanoramaViewer` = TRUE
+* `XMP-GPano:ProjectionType`= equirectangular
+* `XMP-GPano:CroppedAreaLeftPixels` = 0
+* `XMP-GPano:CroppedAreaTopPixels` = 0
+
+The following fields vary depending on input
+
+* `XMP-GPano:CroppedAreaImageHeightPixels` = Is same as ImageHeight value
+* `XMP-GPano:CroppedAreaImageWidthPixels` = Is same as ImageWidth value
+* `XMP-GPano:FullPanoHeightPixels` = Is same as ImageHeight value
+* `XMP-GPano:FullPanoWidthPixels` = Is same as ImageWidth value
+
+To assign the photo times, we use the first GPS time value reported in the GPS extracted earlier and assign it to photo time fields as follows:
+
+<table class="tableizer-table">
+<thead><tr class="tableizer-firstrow"><th>Video metadata field extracted</th><th>Example extracted</th><th>Image metadata field injected</th><th>Example injected</th></tr></thead><tbody>
+ <tr><td>TrackN:GPSDateTime</td><td>2020:04:13 15:37:22.444</td><td>DateTimeOriginal</td><td>2020:04:13 15:37:22Z</td></tr>
+ <tr><td>TrackN:GPSDateTime</td><td>2020:04:13 15:37:22.444</td><td>SubSecTimeOriginal</td><td>444</td></tr>
+ <tr><td>TrackN:GPSDateTime</td><td>2020:04:13 15:37:22.444</td><td>SubSecDateTimeOriginal</td><td>2020:04:13 15:37:22.444Z</td></tr>
+</tbody></table>
+
+Example exiftool command to write these values:
+
+```shell
+exiftool DateTimeOriginal:"2020:04:13 15:37:22Z" SubSecTimeOriginal:"444" SubSecDateTimeOriginal: "2020:04:13 15:37:22.444Z"
+```
+
+Now we need to assign time to other photos. To do this we simply order the photos in ascending numerical order (as we number them sequentially when extracting frames).
+
+We always extract videos at a fixed frame rate based on user input. Therefore, we really only need to know the video start time in addition to framerate, to determine time of subsequent photos.
+
+To do this, we can incrementally add time based on extraction rate (e.g. photo 2 is 0.2 seconds later than photo one where framerate is set at extraction as 5 FPS).
+
+Now the photos are timed, we can use the photo time and GPS positions / times to geotag the photos:
+
+[We can use Exiftool's geotag function to add GPS data (latitude, longitude, altitude)](https://exiftool.org/geotag.html).
+
+```shell
+exiftool -Geotag file.xml "-Geotime<SubSecDateTimeOriginal" dir
+
+```
+
+This will write the following fields into the photos
+
+<table class="tableizer-table">
+<thead><tr class="tableizer-firstrow"><th>Image metadata field injected</th><th>Example injected</th></tr></thead><tbody>
+ <tr><td>GPS:GPSDateStamp</td><td>2020:04:13</td></tr>
+ <tr><td>GPS:GPSTimeStamp</td><td>15:37:22.444</td></tr>
+ <tr><td>GPS:GPSLatitude</td><td>51 deg 14' 54.51"</td></tr>
+ <tr><td>GPS:GPSLatitudeRef</td><td>North</td></tr>
+ <tr><td>GPS:GPSLongitude</td><td>16 deg 33' 55.60"</td></tr>
+ <tr><td>GPS:GPSLongitudeRef</td><td>West</td></tr>
+ <tr><td>GPS:GPSAltitudeRef</td><td>Above Sea Level</td></tr>
+ <tr><td>GPS:GPSAltitude</td><td>157.641 m</td></tr>
+</tbody></table>
+
+Now all photos are tagged like images we can use the same logic pipeline as mode 2. See 2d: Processing frames,.
+
+
+
+
+
+
+
+

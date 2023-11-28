@@ -2,7 +2,7 @@
 
 Test cases for gopro2gsv
 
-## Video mode (single mp4) -> Video output
+## Mode 1
 
 GS016843.mp4 = 00:03:07 (187 secs) duration
 
@@ -53,3 +53,6 @@ python3 gopro2gsv.py \
 ```
 
 187 * 2 = 374 frames = 375 / 5 = 75 seconds final output. Thus expect 4 videos output.
+
+## Mode 2
+
