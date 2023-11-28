@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 from math import ceil
 from .utils import metadata_dict
+from .constants import *
 
 from logging import getLogger
 logger = getLogger("gopro2gsv.image_tool")
@@ -18,8 +19,7 @@ logger = getLogger("gopro2gsv.image_tool")
 MAX_RE = re.compile(r"(\w{4}).*.jpg")
 FUSION_RE = re.compile(r"multishot_(\d{4})_.*.jpg")
 
-MAX_TIME_DIFFERENCE = 20
-MIN_FRAMES_PER_VIDEO = 20
+
 
 CAMERAS_RE = {
     "fusion": re.compile(r"(\w{4}).*.jpg"),
@@ -50,7 +50,6 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
     valid_images = []
 
     for f, metadata in get_exif_details_for_dir(input_dir).items():
-        metadata = metadata_dict(metadata)
         try:
             name = f.name.lower()
             if name.startswith("."):
