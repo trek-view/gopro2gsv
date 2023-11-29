@@ -112,6 +112,7 @@ def fix_outlier(valid_images, max_acceptable_velocity, invalid_files=None):
             logger.warn(f"{error} for {image['path']}")
             continue
         prev_date = date
+        prev_image = image
         
     return valid_images
 
@@ -155,11 +156,15 @@ def process_into_videos(valid_images, framerate, max_length, output_filepath, fr
         frame_cursor = end
     return videos
 
-def write_images_to_dir(images: list[dict], dir: Path):
+def write_images_to_dir(images: list[dict], dir: Path)->int:
     dir.mkdir(exist_ok=True)
-    for i, image in enumerate(images):
+    i = 0
+    for image in images:
+        if image["error"]:
+            continue
         path: Path = image['path']
         newpath = dir/f"{i:05d}.jpg"
         shutil.copyfile(path, newpath)
         image["newpath"] = newpath
-    return
+        i += 1
+    return i+1
