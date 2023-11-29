@@ -161,7 +161,7 @@ exiftool tests/output/mode3/test1/GS016843-images/FRAME-00004.jpg -GPSDateTime
 # GPS Date/Time                   : 2023:03:02 08:13:06.899Z
 ```
 
-### Extract frames from video input at 0.5 FPS and rebuild video with 20 second max (100 frames)
+### Extract frames from video input at 0.5 FPS and rebuild video with 20 second max (100 frames) -- simple split
 
 ```shell
 python3 gopro2gsv.py \
@@ -172,8 +172,20 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode3/test2/GS016843.mp4
 ```
 
+187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. 74.8/20 = 3.74. Thus expect 4 videos output. The first three 00:00:20 long. The third 00:00:14.800
 
-187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 4 videos output. The first three 00:00:20 long. The third 00:00:14.800 
+### Extract frames from video input at 0.5 FPS and rebuild video with 37 second max (185 frames) -- complex split
+
+```shell
+python3 gopro2gsv.py \
+	--input_video tests/ski/GS016843.mp4 \
+	--extract_fps 2 \
+	--max_output_video_secs 37 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode3/test2/GS016843.mp4
+```
+
+187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. 74.8/37 = 2.02. Expect 3 videos. The first video 00:00:37, the second video 00:00:35 seconds (as need to remove 20 frames to satify minumum length of last video), and final video would be 00:00:02.800.
 
 ### Extract frames from video input at 0.5 FPS and add a nadir with 15 % height
 

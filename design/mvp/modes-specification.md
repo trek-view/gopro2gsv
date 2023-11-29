@@ -17,11 +17,7 @@ gopro2gsv supports a variety of modes depending on the input media you have, and
 		* to remove erroneous GPS points / frames: useful for when GPS is erratic and GSV rejects unmodified input video for this reason
 		* keep a copy of extracted frames: useful if you want to share geotagged frames in addition to the video (e.g. on Facebook, etc.)
 4. .360 mode -> max2sphere -> timelapse frames -> final video (for MAX cameras)
-	* this mode is similar to equirectangular mp4 video -> timelapse frames -> final video mode, however accepts GoPro's .360 video format (EAC projection). .360 inputs are broken into geotagged timelapse frames at a user set frame rate, erroneous GPS points/frames removed, and these frames are then converted to equirectangular images using max2sphere, and finally rebuilt into an equirectangular video, or set of equirectangular videos (and optionally a set of frames). The user options are the same as equirectangular mp4 video -> timelapse frames -> final video mode
-5. dual fisheye timelapse frames -> fusion2sphere -> timelapse frames -> final video (for Fusion cameras)
-	* this mode take two fisheye timelapse frames, stitches them together into equirectangular frames using fusion2sphere, removes erroneous GPS points/frames, and the extracted frames are then rebuilt into an equirectangular video, or set of equirectangular videos. The user options are the same as equirectangular timelapse frames -> final video
-6. dual fisheye mp4 video -> timelapse frames -> final video (for Fusion cameras)
-	* this mode takes two fisheye mp4 videos, breaks each video into frames at a user defined frame rate, stitches them together into equirectangular frames using fusion2sphere, removes erroneous GPS points/frames, and the extracted frames are then rebuilt into an equirectangular video, or set of equirectangular videos. The user options are the same as equirectangular mp4 video -> timelapse frames -> final video mode
+	* this mode is similar to equirectangular mp4 video -> timelapse frames -> final video mode, however accepts GoPro's .360 video format (EAC projection). .360 inputs are broken into geotagged timelapse frames at a user set frame rate, erroneous GPS points/frames removed, and these frames are then converted to equirectangular images using max2sphere, and finally rebuilt into an equirectangular video, or set of equirectangular videos (and optionally a set of frames). The user options are the same as equirectangular mp4 video -> timelapse frames -> final video mode 
 
 ## Mode specifications
 
@@ -32,6 +28,13 @@ Processed GoPro MAX and Fusion videos can be directly uploaded to StreetView.
 However, there are many cases where user will want to add a nadir.
 
 As such, user can enter GoPro videos to GoPro2GSV. They will be outputted with a nadir now added to the video track, however, all other tracks will remain the same.
+
+Overview:
+
+* 1a: user input
+* 1b: validation
+* 1c: add a nadir
+* 1d: output
 
 #### 1a: User options on input
 
@@ -89,6 +92,15 @@ The output video matches the input video for quality and for contained tracks (e
 ### Mode 2: equirectangular timelapse frames -> final video
 
 `.jpg` timelapse images from the GoPro MAX or Fusion cameras can be converted into a video.
+
+Overview:
+
+* 2a: user input
+* 2b: validation
+* 2c: smooth GPS
+* 2d: turn frames into video
+* 2e: add nadir (same a 1c)
+* 2f: output
 
 #### 2a: User options on input
 
@@ -199,12 +211,11 @@ Helpful supporting information for this section:
 
 * Overview to GPMF: https://www.trekview.org/blog/metadata-exif-xmp-360-video-files-gopro-gpmd/
 * Overview to CAMM https://www.trekview.org/blog/metadata-exif-xmp-360-video-files-camm-camera-motion-metadata-spec/
-* Adding a CAMM track to video: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-4-camm/
-* Adding a GPMF track to video:  https://www.trekview.org/blog/injecting-camm-gpmf-telemetry-videos-part-5-gpmf/
-* Understanding MP4s: https://github.com/trek-view/tools/tree/main/understanding_mp4
-* Understanding GPS: https://github.com/trek-view/tools/tree/main/understanding_gps
-* Understanding GMPF telemetry: https://github.com/trek-view/tools/blob/main/understanding_gpmf_telemetry.md
-* Understanding CAMM telemetry: https://github.com/trek-view/tools/tree/main/understanding_camm
+* Injecting Telemetry into Video Files (Part 1): An Introduction: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-1-introduction/
+* Injecting Telemetry into Video Files (Part 2): A high-level introduction to the mp4 specification: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-2-mp4-overview/
+* Injecting Telemetry into Video Files (Part 3): Structuring telemetry trak's in mp4 videos: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-3-mp4-structure-telemetry-trak/
+* Injecting Telemetry into Video Files (Part 4): CAMM: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-4-camm/
+* Injecting Telemetry into Video Files (Part 5): GPMF: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-5-gpmf/
 * Setting times between images https://www.trekview.org/blog/turn-gopro-timewarp-video-into-timelapse-images/
 * Proof of concept implementation: https://github.com/trek-view/telemetry-injector/tree/dep
 
@@ -258,7 +269,7 @@ python spatialmedia -i demo-video-no-meta.mp4 demo-video-with-meta.mp4
 
 #### 2e: Adding a nadir
 
-Same as for mode 1.
+Same as for mode 1c.
 
 #### 2f: Output
 
@@ -294,6 +305,13 @@ Lets say 290 frames are used in the input (and all pass validation). The user se
 290 / 5 = 58 seconds. Therefore 3 videos will result. As no videos less than 20 frames, no need to account for videos that don't meet 20 frame requirements.
 
 ### Mode 3: equirectangular mp4 video -> timelapse frames -> final video
+
+Overview:
+
+* 3a: user input
+* 3b: validation
+* 3c: extract and geotag frames
+* 3d: start mode 2 pipeline at 2c: smooth GPS
 
 #### 3a: User options on input
 
@@ -409,13 +427,20 @@ This will write the following fields into the photos;
 * `GPS:GPSAltitudeRef`
 * `GPS:GPSAltitude`
 
-#### 3d: Start image processing pipeline
+#### 3d: start mode 2 pipeline at 2c: smooth GPS
 
-Now all photos are tagged like images we can use the same logic pipeline as mode 2. See 2d: Processing frames.
+3d: start mode 2 pipeline at 2c: smooth GPS
 
 ### Mode 4: .360 mode -> max2sphere -> timelapse frames -> final video (for MAX cameras)
 
 MAX Cameras produce a .360 format that is in EAC format. These need to be converted into equirectangular format for use with most major viewing software (e.g. GSV).
+
+Overview:
+
+* 4a: user input
+* 4b: validation
+* 4c: extract frames and GPS, convert frames to equirectangular
+* 4d: start mode 3 at 3c Processing - geotag the extracted frames
 
 #### 4a: User options on input
 
@@ -493,7 +518,4 @@ For `-m` flag variable `YYYY` is equal to number of frames extracted from the vi
 
 Same as 3c: Processing - geotag the extracted frames.
 
-Script now continues rest of processing flow from 3c.
-
- 
-
+Script now continues rest 2c processing (GPS smoothing)
