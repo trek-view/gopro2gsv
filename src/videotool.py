@@ -128,8 +128,8 @@ def video_to_images(video: Path, out: Path, framerate:int=None):
     for i in range(min(numframes, len(frames))):
         frames[i]["path"] = frames_dir/("FRAME-%05d.jpg"%(i+1))
         frames[i]["newpath"] = frames[i]["path"]
-        frames[i]["File:ImageWidth"] = first_frame["File:ImageWidth"]
-        frames[i]["File:ImageHeight"] = first_frame["File:ImageHeight"]
+        frames[i]["height"] = int(first_frame["File:ImageHeight"])
+        frames[i]["width"] = int(first_frame["File:ImageWidth"])
     tag_image(frames[0])
     return frames, fps, frames_dir/"FRAME-%05d.jpg"
 

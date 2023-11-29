@@ -129,13 +129,13 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
         log_filepath    = output_filepath.with_name(output_filename+".log")
         setLogFile(logger, log_filepath)
         valid_images, invalid_files = get_files_from_dir(input_dir)
-        valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec, invalid_files)
+        valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec)
 
         processed_dir = output_filepath
         # gpx_file = input_dir/"processed.gpx"
         database.record_timelapse(invalid_files)
+        database.record_timelapse(valid_images)
         logger.info(f"Copying {len(valid_images)} images to new directory: {processed_dir.absolute()}")
-        write_images_to_dir(valid_images, processed_dir)
 
         videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, processed_dir)
         delete_files(processed_dir)
@@ -167,15 +167,15 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             logger.info(f"Found {width}x{height} video with {valid_frames} valid GPS points at {input_vid}")
             videos.append((input_vid, width, height, metadata, output_filepath))
         else:
-            invalid_files = []
+            logger.info("extracting images")
             valid_images, video_fps, frame_glob = video_to_images(input_vid, output_filepath, framerate=args.extract_fps)
             if args.keep_extracted_frames:
                 logger.info(f"Tagging {len(valid_images)} images")
                 tag_all_images(valid_images)
-            valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec, invalid_files)
+            valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec)
             
-            database.record_timelapse(invalid_files)
-            videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, output_filepath, frame_glob=frame_glob)
+            database.record_timelapse(valid_images)
+            videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, output_filepath)
 
             if args.keep_extracted_frames:
                 output_filename, _ = os.path.splitext(output_filepath.name)
