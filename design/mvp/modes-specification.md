@@ -197,15 +197,15 @@ As such, a sequence with 720 images will create three videos; two with 300 frame
 
 Helpful supporting information for this section:
 
-* Overview to GPMF: https://www.trekview.org/blog/2020/metadata-exif-xmp-360-video-files-gopro-gpmd/
-* Overview to CAMM https://www.trekview.org/blog/2021/metadata-exif-xmp-360-video-files-camm-camera-motion-metadata-spec/
-* Adding a CAMM track to video: https://www.trekview.org/blog/2022/injecting-camm-gpmd-telemetry-videos-part-4-camm/
-* Adding a GPMF track to video:  https://www.trekview.org/blog/2022/injecting-camm-gpmf-telemetry-videos-part-5-gpmf/
+* Overview to GPMF: https://www.trekview.org/blog/metadata-exif-xmp-360-video-files-gopro-gpmd/
+* Overview to CAMM https://www.trekview.org/blog/metadata-exif-xmp-360-video-files-camm-camera-motion-metadata-spec/
+* Adding a CAMM track to video: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-4-camm/
+* Adding a GPMF track to video:  https://www.trekview.org/blog/injecting-camm-gpmf-telemetry-videos-part-5-gpmf/
 * Understanding MP4s: https://github.com/trek-view/tools/tree/main/understanding_mp4
 * Understanding GPS: https://github.com/trek-view/tools/tree/main/understanding_gps
 * Understanding GMPF telemetry: https://github.com/trek-view/tools/blob/main/understanding_gpmf_telemetry.md
 * Understanding CAMM telemetry: https://github.com/trek-view/tools/tree/main/understanding_camm
-* Setting times between images https://www.trekview.org/blog/2022/turn-gopro-timewarp-video-into-timelapse-images/
+* Setting times between images https://www.trekview.org/blog/turn-gopro-timewarp-video-into-timelapse-images/
 * Proof of concept implementation: https://github.com/trek-view/telemetry-injector/tree/dep
 
 GPMF is a video telemetry standard embedded as a track to MP4 videos.
@@ -320,6 +320,11 @@ There are three distinct parts of the video extraction;
 
 ##### 3c: Processing - extract GPS
 
+Useful supporting reading for this section:
+
+* Extract GPS from video: https://www.trekview.org/blog/extracting-gps-track-from-360-timelapse-video/
+* Lessons learned geotagging photos: https://www.trekview.org/blog/lessons-learned-when-geotagging-photos/
+
 A GPX file can be created as follows
 
 ```shell
@@ -390,29 +395,105 @@ Now the photos are timed, we can use the photo time and GPS positions / times to
 [We can use Exiftool's geotag function to add GPS data (latitude, longitude, altitude)](https://exiftool.org/geotag.html).
 
 ```shell
-exiftool -Geotag file.xml "-Geotime<SubSecDateTimeOriginal" dir
-
+exiftool -Geotag file.xml "-Geotime<SubSecDateTimeOriginal" DIRECTORY_OF_IMAGES
 ```
 
-This will write the following fields into the photos
+This will write the following fields into the photos;
 
-<table class="tableizer-table">
-<thead><tr class="tableizer-firstrow"><th>Image metadata field injected</th><th>Example injected</th></tr></thead><tbody>
- <tr><td>GPS:GPSDateStamp</td><td>2020:04:13</td></tr>
- <tr><td>GPS:GPSTimeStamp</td><td>15:37:22.444</td></tr>
- <tr><td>GPS:GPSLatitude</td><td>51 deg 14' 54.51"</td></tr>
- <tr><td>GPS:GPSLatitudeRef</td><td>North</td></tr>
- <tr><td>GPS:GPSLongitude</td><td>16 deg 33' 55.60"</td></tr>
- <tr><td>GPS:GPSLongitudeRef</td><td>West</td></tr>
- <tr><td>GPS:GPSAltitudeRef</td><td>Above Sea Level</td></tr>
- <tr><td>GPS:GPSAltitude</td><td>157.641 m</td></tr>
-</tbody></table>
+* `GPS:GPSDateStamp`
+* `GPS:GPSTimeStamp`
+* `GPS:GPSLatitude`
+* `GPS:GPSLatitudeRef`
+* `GPS:GPSLongitude`
+* `GPS:GPSLongitudeRef`
+* `GPS:GPSAltitudeRef`
+* `GPS:GPSAltitude`
+
+#### 3d: Start image processing pipeline
 
 Now all photos are tagged like images we can use the same logic pipeline as mode 2. See 2d: Processing frames.
 
 ### Mode 4: .360 mode -> max2sphere -> timelapse frames -> final video (for MAX cameras)
 
+MAX Cameras produce a .360 format that is in EAC format. These need to be converted into equirectangular format for use with most major viewing software (e.g. GSV).
 
+#### 4a: User options on input
 
+* custom nadir file
+* custom nadir size
+* extraction frame rate
+* keep extracted frames
+* smooth GPS
+* maximum output video length
 
+#### 4b: Validation
+
+GoPro2GSV validates `.360` inputs before processing as follows;
+
+* file extension must be `.360`
+* filenames must start with `GS`
+* `GoPro:Model` is GoPro Max
+* `trackN:MetaFormat` is gpmd
+* `trackN:GPSDateTime` has more than 10 entries
+
+Where `trackN` is the track that contains the gpmd telemetry.
+
+#### 4c: Processing
+
+Useful supporting information for this section;
+
+* Reverse Engineering GoPro's 360 Video File Format (Part 1)
+https://www.trekview.org/blog/reverse-engineering-gopro-360-file-format-part-1/
+* Part 2
+https://www.trekview.org/blog/reverse-engineering-gopro-360-file-format-part-2/
+* Part 3
+https://www.trekview.org/blog/reverse-engineering-gopro-360-file-format-part-3/
+* Part 4
+https://www.trekview.org/blog/reverse-engineering-gopro-360-file-format-part-3/
+
+Processing is broken up into four key parts;
+
+1. extract GPS from video
+2. extracting frames from .360 input
+3. turning extracted frames into equirectangular projections using max2sphere
+4. geotag extracted frames
+
+##### 4c Processing - extract GPS from video
+
+Same as 3c: Processing - extract GPS
+
+##### 4c Processing - extracting frames from .360 input
+
+The following command can be used to extract frames from the video;
+
+```
+ffmpeg -i INPUT.360 -map 0:0 -r XXX trackN/img%d.jpg -map 0:5 -r XXX trackN/img%d.jpg
+```
+
+Where `XXX` = framerate user passes in CLI.
+
+Note: if timewarp mode is used, the track numbers are different:
+
+Regular video = `-map 0:0` and `-map 0:5`
+Timewarp video = `-map 0:0` and `-map 0:4` (not currently supported)
+
+##### 4c Processing - turning extracted frames into equirectangular projections using max2sphere
+
+Using max2sphere each frame can be turned into equirectangular frames;
+
+```shell
+@SYSTEM_PATH/max2sphere -w XXXX -n 1 -m YYYY track%d/frame%4d.jpg
+```
+
+Note, `-w` flag variable (`XXXX`), is the same as `ImageWidth` of extracted frame:
+
+For `-m` flag variable `YYYY` is equal to number of frames extracted from the video.
+
+##### 4c Processing - geotag extracted frames
+
+Same as 3c: Processing - geotag the extracted frames.
+
+Script now continues rest of processing flow from 3c.
+
+ 
 
