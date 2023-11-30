@@ -152,6 +152,7 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
 
 # returns number of frames
 def splitvideo(video:Path, out:Path, framerate=None) -> int:
+    start_time = datetime.now()
     if os.listdir(out.parent):
         raise FatalException(f"Cannot split into `{str(out.parent)}`, directory not empty")
     cmd = [get_ffmpeg(), "-i", video]
@@ -159,11 +160,14 @@ def splitvideo(video:Path, out:Path, framerate=None) -> int:
         cmd.extend(["-r", str(framerate)])
     _, ext = os.path.splitext(video)
     if ext == '.360':
-        cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect[out]', '-map', '[out]'])
+        # cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,scale=2*trunc(iw/2):2*trunc(ih/2)[out]', '-map', '[out]'])
+        cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,crop=iw:ih:mod(iw\,2):mod(ih\,2)[out]', '-map', '[out]'])
     cmd.extend(["-y", out]) #always overwrite
 
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
-    return len(os.listdir(out.parent))
+    num_frames = len(os.listdir(out.parent))
+    logger.info(f"video `{video}` split into {num_frames} frames, took {(datetime.now() - start_time).total_seconds()} seconds")
+    return num_frames
     
 
 def copy_metadata_from_file(from_: Path, to_: Path):
