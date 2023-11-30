@@ -135,14 +135,14 @@ def process_into_videos(images, framerate, max_length, output_filepath, global_m
         if i == parts-1:
             remaining_frames = number_of_images-end
             if remaining_frames < MIN_FRAMES_PER_VIDEO:
-                end -= MIN_FRAMES_PER_VIDEO
+                end = number_of_images - MIN_FRAMES_PER_VIDEO
         end = min(end, len(valid_images))
         
         gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
         mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
         final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")
         first_image = valid_images[frame_cursor]
-        # logger.info(f"Using frame #{frame_cursor} to #{end}")
+        logger.info(f"Using frame #{frame_cursor} to #{end}")
         logger.info(f"generating gpx file for video #{i} at {gpx_file}")
         start_date = valid_images[0]["date"] + frame_cursor*timedelta(seconds=1)/framerate
         generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file, start_date=start_date, frame_rate=framerate)

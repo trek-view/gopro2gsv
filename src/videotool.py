@@ -59,7 +59,7 @@ def get_gps_data(metadata, video_fps=None):
     num_frames = math.ceil(video_fps * media_duration)
     gps_cursor = 0
     frames = []
-    for f in range(num_frames):
+    for f in range(num_frames+2):
         frame_time = f/video_fps
         gps_cursor, point = get_point_by_time(points[gps_cursor:], frame_time)
         frame = point.copy()
@@ -125,11 +125,13 @@ def video_to_images(video: Path, out: Path, framerate:int=None):
     first_frame_path = frames_dir/("FRAME-%05d.jpg"%1)
     copy_metadata_from_file(video, first_frame_path)
     first_frame = get_exif_details(first_frame_path)
-    for i in range(min(numframes, len(frames))):
+    numframes = min(numframes, len(frames))
+    for i in range(numframes):
         frames[i]["path"] = frames_dir/("FRAME-%05d.jpg"%(i+1))
         frames[i]["newpath"] = frames[i]["path"]
         frames[i]["height"] = int(first_frame["File:ImageHeight"])
         frames[i]["width"] = int(first_frame["File:ImageWidth"])
+    frames = frames[:numframes]
     tag_image(frames[0])
     return frames, fps, frames_dir/"FRAME-%05d.jpg"
 
