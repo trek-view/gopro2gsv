@@ -128,7 +128,7 @@ Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 13 = 9.08 videos.
 ```shell
 python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-frames-removed/ \
-	--output_filepath tests/output/mode2/test4/UKHB001v205-frames-removed
+	--output_filepath tests/output/mode2/test4/UKHB001v205-frames-removed.mp4
 ```
 
 Directory has 590 items. Expected 2 videos out. One 00:01:00 (300 frames max) and the second 00:00:58.
@@ -224,7 +224,7 @@ python3 gopro2gsv.py \
 	--keep_extracted_frames \
 	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
 	--size_of_nadir 15 \
-	--output_filepath tests/output/mode3/test3/GS016843.mp4
+	--output_filepath tests/output/mode3/test3/GS016843
 ```
 
 187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:14.800.
