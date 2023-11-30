@@ -92,7 +92,7 @@ The options available to run differ by mode as follows;
 * `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
 	* e.g. `25` (%)
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
-	* e.g. `/path/to/my/file-out.mp4`
+	* e.g. `/path/to/my/file-out`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
 #### Mode 2: equirectangular timelapse frames -> final video
@@ -108,7 +108,7 @@ The options available to run differ by mode as follows;
 * `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
 	* e.g. `30` seconds
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
-	* e.g. `/path/to/my/file-out.mp4`
+	* e.g. `/path/to/my/file-out`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
 #### Mode 3: equirectangular mp4 video -> timelapse frames -> final video
@@ -128,7 +128,7 @@ The options available to run differ by mode as follows;
 * `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
 	* e.g. `30` seconds
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
-	* e.g. `/path/to/my/file-out.mp4`
+	* e.g. `/path/to/my/file-out`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
 
@@ -148,7 +148,7 @@ The options available to run differ by mode as follows;
 * `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
 	* e.g. `30` seconds
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
-	* e.g. `/path/to/my/file-out.mp4`
+	* e.g. `/path/to/my/file-out`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
 
 #### All modes: Check for Street View Status updates

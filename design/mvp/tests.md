@@ -32,7 +32,7 @@ Bad case:
 python3 gopro2gsv.py \
 	--input_video tests/hero_videos/GH018678.MP4 \
 	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
-	--output_filepath tests/output/mode1/test0/GH018678.MP4
+	--output_filepath tests/output/mode1/test0/GH018678
 ```
 
 ### No frame extraction, add a nadir with default size (25%)
@@ -41,7 +41,7 @@ python3 gopro2gsv.py \
 python3 gopro2gsv.py \
 	--input_video tests/ski/GS016843.mp4 \
 	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
-	--output_filepath tests/output/mode1/test1/GS016843.mp4
+	--output_filepath tests/output/mode1/test1/GS016843
 ```
 
 ### No frame extraction, add a nadir with custom size (10%)
@@ -51,7 +51,7 @@ python3 gopro2gsv.py \
 	--input_video tests/ski/GS016843.mp4 \
 	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
 	--size_of_nadir 10 \
-	--output_filepath tests/output/mode1/test2/GS016843.mp4
+	--output_filepath tests/output/mode1/test2/GS016843
 ```
 
 =========
@@ -70,7 +70,7 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode2/test1/hero_photos.mp4
 ```
 
-### Testing smooting with two bad GPS points (with custom value 20m/s set)
+### Testing smoothing with two bad GPS points (with custom value 20m/s set)
 
 A note on how to corrupt GPS (for this test case smoothing)
 
@@ -83,8 +83,21 @@ exiftool -overwrite_original -GPSLatitude=20.1 -GPSLatitudeRef=N -GPSLongitude=-
 python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-some-bad-gps/ \
 	--outlier_speed_meters_sec 20 \
-	--output_filepath tests/output/mode2/test1/UKHB001v205-some-bad-gps.mp4
+	--output_filepath tests/output/mode2/test1A/UKHB001v205-some-bad-gps
 ```
+
+Directory has 63 items. 2 are bad, so 61. 61/5= 12.2 seconds of footage
+
+### Testing smoothing with two bad GPS points (with custom value 20m/s set) but should not process
+
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/UKHB001v205-some-bad-gps-not-enough/ \
+	--outlier_speed_meters_sec 20 \
+	--output_filepath tests/output/mode2/test1B/UKHB001v205-some-bad-gps-not-enough
+```
+
+Directory has 63 items. 2 are bad, so 18. Not enough for validation.
 
 ### Testing maximum output video length (simple)
 
@@ -93,7 +106,7 @@ python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-frames-removed/ \
 	--max_output_video_secs 20 \
 	--keep_extracted_frames \
-	--output_filepath tests/output/mode2/test2/UKHB001v205-frames-removed.mp4
+	--output_filepath tests/output/mode2/test2/UKHB001v205-frames-removed
 ```
 
 Directory has 590 items. 590/5 (fixed frame rate packer) = 118 seconds of footage. 118/20 = 5.9 videos. The first five 00:00:20 long. The last (sixth) 00:00:18 long.
@@ -105,7 +118,7 @@ python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-frames-removed/ \
 	--max_output_video_secs 13 \
 	--keep_extracted_frames \
-	--output_filepath tests/output/mode2/test3/UKHB001v205-frames-removed.mp4
+	--output_filepath tests/output/mode2/test3/UKHB001v205-frames-removed
 ```
 
 Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 13 = 9.08 videos. Expected 11 videos due to mimium frame. The first eight 00:00:13 log (covers 104 seconds, leaving 14 seconds left). Thus second to last video (ninth) should have 20 frames (4 seconds) removed so will equal 00:00:09 seconds. And thus the final video (tenth) will be 00:00:05 seconds long.
@@ -115,14 +128,29 @@ Directory has 590 items. 590/5 = 118 seconds of footage. 118 / 13 = 9.08 videos.
 ```shell
 python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-frames-removed/ \
-	--output_filepath tests/output/mode2/test4/UKHB001v205-frames-removed.mp4
+	--output_filepath tests/output/mode2/test4/UKHB001v205-frames-removed
 ```
+
+Directory has 590 items. Expected 2 videos out. One 00:01:00 (300 frames max) and the second 00:00:58.
+
+### Testing with adding nadir
+
+```shell
+python3 gopro2gsv.py \
+	--input_directory tests/UKHB001v205-frames-removed/ \
+	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
+	--size_of_nadir 30 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode2/test5/UKHB001v205-frames-removed
+```
+
+Directory has 590 items. Expected 2 videos out. One 00:01:00 (300 frames max) and the second 00:00:58. Both should have nadir.
+
 =========
 
 ## Mode 3 (equirectangular mp4 video -> timelapse frames -> final video)
 
 =========
-
 
 ### Extract frames from video input at 0.5 FPS and rebuild video with normal length (300 frames)
 
@@ -172,7 +200,7 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode3/test2/GS016843.mp4
 ```
 
-187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. 74.8/20 = 3.74. Thus expect 4 videos output. The first three 00:00:20 long. The third 00:00:14.800
+187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. 74.8/20 = 3.74. Thus expect 4 videos output. The first three 00:00:20 long. The fouth 00:00:14.800
 
 ### Extract frames from video input at 0.5 FPS and rebuild video with 37 second max (185 frames) -- complex split
 
@@ -201,15 +229,31 @@ python3 gopro2gsv.py \
 
 187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:14.800.
 
-### Extract frames from video input at 0.5 FPS and rebuild video with normal length (300 frames)
+
+=========
+
+## Mode 4 (.360 mode -> max2sphere -> timelapse frames -> final video (for MAX cameras))
+
+=========
+
 
 ```shell
 python3 gopro2gsv.py \
-	--input_video tests/ski/GS016843.mp4 \
+	--input_video tests/360_file/GS019359.360 \
 	--extract_fps 0.5 \
 	--keep_extracted_frames \
-	--output_filepath tests/output/mode3/test1/GS016843.mp4
+	--output_filepath tests/output/mode4/test1/GS019359.mp4
 ```
+
+
+GS019359.360
+
+
+
+
+
+
+
 
 
 

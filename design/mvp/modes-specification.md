@@ -163,7 +163,11 @@ Like before, GoPro2GSV tracks the data of each timelapse image, including those 
 
 #### 2d: Processing frames
 
-All valid images in each timelapse (directory) are now ready to be processed. A GPX file is created from the valid images as follows;
+All valid images in each timelapse (directory) are now ready to be processed. 
+
+A final check is done to ensure that there are enough photos to meet the 20 frame (4 second) requirement.
+
+If this test is passed, a GPX file is created from the valid images as follows;
 
 ```shell
 exiftool -fileOrder gpsdatetime -p gpx.fmt <DIRECTORY NAME> <DIRECTORY NAME>.gpx
