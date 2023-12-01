@@ -15,8 +15,8 @@ class BuildCommand(build_py):
     def run(self):
         binary_files: list[Path] = []
         if platform.system() == "Windows":
-            os.system("cd .\\third-party\\fusion2sphere && make")
-            os.system("cd .\\third-party\\max2sphere && make")
+            os.system("cd .\\third-party\\fusion2sphere && make clean && make")
+            os.system("cd .\\third-party\\max2sphere && make clean && make")
             binary_files.append(Path("third-party/max2sphere/max2sphere.exe"))
             binary_files.append(Path("third-party/fusion2sphere/fusion2sphere.exe"))
         else:
