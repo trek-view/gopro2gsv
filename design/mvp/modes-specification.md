@@ -62,8 +62,8 @@ exiftool -ee -G3 -api LargeFileSupport=1 -ProjectionType -MetaFormat -GPSDateTim
 
 Helpful supporting information for this section:
 
-* How to overlay a nadir on a video: https://www.trekview.org/blog/2022/overlay-nadir-watermark-video-using-ffmpeg/
-* How to create a nadir with ImageMagick: https://www.trekview.org/blog/2021/adding-a-custom-nadir-to-360-video-photo/
+* How to overlay a nadir on a video: https://www.trekview.org/blog/overlay-nadir-watermark-video-using-ffmpeg/
+* How to create a nadir with ImageMagick: https://www.trekview.org/blog/adding-a-custom-nadir-to-360-video-photo/
 * Proof of concept of implementation: https://github.com/trek-view/nadir-patcher/
 
 A user can add a nadir to the resulting video file.
@@ -78,7 +78,7 @@ ffmpeg exiftool -ee -G3 -api LargeFileSupport=1 -ImageWidth -ImageHeight <DIRECT
 
 The adjusted nadir height is always 25% of the `ImageHeight` value, and the nadir width the same as the `ImageWidth` value.
 
-A simple walk-through of the process is described here: https://www.trekview.org/blog/2022/overlay-nadir-watermark-video-using-ffmpeg/
+A simple walk-through of the process is described here: https://www.trekview.org/blog/overlay-nadir-watermark-video-using-ffmpeg/
 
 The output video matches the input video for quality and for contained tracks (e.g. video, audio, telemetry, etc.).
 
@@ -167,57 +167,9 @@ exiftool -ee -G3 -api LargeFileSupport=1 -ProjectionType -GPSLatitudeRef -GPSLat
 8. GoPro2GSV renames the images files in format `NNNNN.jpg`, starting from `00001.jpg` and ascends, e.g. `00001.jpg`, `00002.jpg`...
 9. GoPro2GSV tracks the data of each timelapse image, including those that failed validation, in the local database. The original and new filename is included so that it is clear what files were not considered in the final video (and why)
 
-#### 2c: Smoothing GPS
+#### 2c: Removing outlying GPS points
 
-In some cases, GPS data is erroneous. e.g. the distance or speed between two consecutive points by time is clearly to fast (e.g. 1000 km/h speed)
-
-There are many ways to get rid of outlying points like this, here are a few examples; https://gis.stackexchange.com/questions/19683/what-algorithm-should-i-use-to-remove-outliers-in-trace-data
-
-As we don't need all photos in an input we solve it simply by checking speed between photos.
-
-(Distance B to A in meters)/(GPS Time B to GPS Time A) = speed in m/s.
-
-`B to A` is used to account for first and last photos.
-
-User can set an outlier "speed" at input that the speed calculated must not exceed.
-
-Default if not passed is 40 meters / second (144 km/h).
-
-Note, first the script determines the speed between each photo pair. And the photo identified as erronous removed.
-
-Let's walk though two examples to demonstrate;
-
-`B to A`: 100 m/s -- A much be incorrect, because `C to B` has "normal speed", so A is removed
-`C to B`: 5 m/s
-`D to C`: 6 m/s
-`E to D`: 100 m/s
-`F to E`: 100 m/s -- E much be incorrect, because `D to C` and `F to G` has "normal speed", so A is removed
-`G to F`: 5 m/s
-
-
-
-`B to A`: 4 m/s
-`C to B`: 100 m/s
-`D to C`: 100 m/s
-`E to D`: 2 m/s
-`F to E`: 2 m/s
-`G to F`: 100 m/s
-
-
-`B to A`: 4 m/s
-`C to B`: 100 m/s
-`D to C`: 100 m/s
-`E to D`: 100 m/s
-`F to E`: 2 m/s
-`G to F`: 
-
-
-
-When user passes this flag, they can enter any whole number.
-
-For the images that remain after initial validation, when a destination photo has a speed greater than the specified outlier speed it will be removed (and logged) from the input photos considered to produce a video (similar to validation logic to when photos in input have no GPS).
-
-Like before, GoPro2GSV tracks the data of each timelapse image, including those that failed GPS smoothing, with information about why they failed.
+**NOT YET IMPLEMENTED. NEED TO RESEARCH. TODO.**
 
 #### 2d: Processing frames
 
@@ -262,7 +214,7 @@ There are three distinct parts of the video created from the validated images;
 
 Helpful supporting information for this section:
 
-* Publishing a video to StreetView API: https://www.trekview.org/blog/2022/create-google-street-view-video-publish-api/
+* Publishing a video to StreetView API: https://www.trekview.org/blog/create-google-street-view-video-publish-api/
 * H265 encoding in ffmpeg: https://trac.ffmpeg.org/wiki/Encode/H.265
 
 Video processing can be done by ffmpeg as follows
@@ -298,7 +250,7 @@ Helpful supporting information for this section:
 * Injecting Telemetry into Video Files (Part 4): CAMM: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-4-camm/
 * Injecting Telemetry into Video Files (Part 5): GPMF: https://www.trekview.org/blog/injecting-camm-gpmd-telemetry-videos-part-5-gpmf/
 * Setting times between images https://www.trekview.org/blog/turn-gopro-timewarp-video-into-timelapse-images/
-* Proof of concept implementation: https://github.com/trek-view/telemetry-injector/tree/dep
+* A set of notes detailing research into mp4 formats/telemetry used to create these posts can be seen here: https://github.com/trek-view/gopro-metadata/tree/main/notes
 
 GPMF is a video telemetry standard embedded as a track to MP4 videos.
 
@@ -321,14 +273,14 @@ For example,
 
 Now that the times are corrected, the GPMF track can be created for the video.
 
-TODO: FIX BROKEN LINKS TO TELEMETRY INJECTOR
+This is done using the code under `src/telemetry_injector`
 
 ##### 2d: Processing frames - video file metadata
 
 Helpful supporting information for this section:
 
-* Copying global metadata: https://www.trekview.org/blog/2022/create-google-street-view-video-publish-api/
-* Google Spatial Media usage: https://www.trekview.org/blog/2021/introduction-to-xmp-namespaces/
+* Copying global metadata: https://www.trekview.org/blog/create-google-street-view-video-publish-api/
+* Google Spatial Media usage: https://www.trekview.org/blog/introduction-to-xmp-namespaces/
 
 Finally, the script adds some global metadata to the video(s) to make them easier to work with in the future.
 
@@ -338,7 +290,7 @@ This can be done by copying the metadata from the first frame, into the video fi
 exiftool -TagsFromFile FIRSTFRAME.jpg "-all:all>all:all" OUTPUT.mp4
 ```
 
-Note, when the timelapse creates multiple video outputs, the FIRSTFRAME.jpg considers the first frame used for that video.
+Note, when the timelapse creates multiple video outputs, the FIRSTFRAME.jpg considers the first frame used for each video.
 
 Finally the Google Spatial Media tool can be used to inject equirectangular info to ensure video projection is read correctly;
 
@@ -561,8 +513,7 @@ Processing is broken up into four key parts;
 
 1. extract GPS from video
 2. extracting frames from .360 input
-3. turning extracted frames into equirectangular projections using max2sphere
-4. geotag extracted frames
+3. geotag extracted frames
 
 ##### 4c Processing - extract GPS from video
 
@@ -570,33 +521,21 @@ Same as 3c: Processing - extract GPS
 
 ##### 4c Processing - extracting frames from .360 input
 
-The following command can be used to extract frames from the video;
+The following command can be used to extract frames from the video and stitch them into equirectangular images;
 
 ```
-ffmpeg -i INPUT.360 -map 0:0 -r XXX trackN/img%d.jpg -map 0:5 -r XXX trackN/img%d.jpg
+ffmpeg -i VIDEO.360 -r EXTRACT_FPS -filter_complex '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect[out]' -map '[out]' OUTPUT_PATH/_processing/FRAME-%05d.jpg
 ```
 
-Where `XXX` = framerate user passes in CLI.
+Where `EXTRACT_FPS` = framerate user passes in CLI.
 
-Note: if timewarp mode is used, the track numbers are different:
+Note: if timewarp mode is used, the track numbers for telemetry are different:
 
 Regular video = `-map 0:0` and `-map 0:5`
 Timewarp video = `-map 0:0` and `-map 0:4` (not currently supported)
-
-##### 4c Processing - turning extracted frames into equirectangular projections using max2sphere
-
-Using max2sphere each frame can be turned into equirectangular frames;
-
-```shell
-@SYSTEM_PATH/max2sphere -w XXXX -n 1 -m YYYY track%d/frame%4d.jpg
-```
-
-Note, `-w` flag variable (`XXXX`), is the same as `ImageWidth` of extracted frame:
-
-For `-m` flag variable `YYYY` is equal to number of frames extracted from the video.
 
 ##### 4c Processing - geotag extracted frames
 
 Same as 3c: Processing - geotag the extracted frames.
 
-Script now continues rest 2c processing (GPS smoothing)
+Script now continues rest 2c processing (GPS outlier removal)
