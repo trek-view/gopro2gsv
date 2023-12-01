@@ -1,0 +1,6 @@
+[submodule "third-party/max2sphere"]
+	path = third-party/max2sphere
+	url = https://github.com/trek-view/max2sphere
+[submodule "third-party/fusion2sphere"]
+	path = third-party/fusion2sphere
+	url = https://github.com/trek-view/fusion2sphere

@@ -18,6 +18,7 @@ DEFAULT_FRAME_RATE = 5
 MODULE_PATH = importlib.resources.files(__package__)
 ASSETS_PATH = MODULE_PATH / "assets"
 SUBMODULES  = MODULE_PATH/ "third-party"
+BINARY_PATH = MODULE_PATH/"bin"
 
 class InvalidImageException(Exception):
     pass
@@ -57,7 +58,7 @@ def getText(nodelist):
 def parse_exif_metadata(content: bytes):
     doc: Document = parseString(content)
     root: Element = None
-    out_vals: dict[Path, dict] = {}
+    out_vals: dict[Path, metadata_dict] = {}
     for root in doc.getElementsByTagName("rdf:Description"):
         file = Path(root.getAttribute("rdf:about"))
         child: Element = None
@@ -151,24 +152,46 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     return
 
 # returns number of frames
-def splitvideo(video:Path, out:Path, framerate=None) -> int:
+def splitvideo(video:Path, out:Path, framerate=None, width=None) -> int:
     start_time = datetime.now()
     if os.listdir(out.parent):
         raise FatalException(f"Cannot split into `{str(out.parent)}`, directory not empty")
-    cmd = [get_ffmpeg(), "-i", video]
-    if framerate:
-        cmd.extend(["-r", str(framerate)])
-    _, ext = os.path.splitext(video)
-    if ext == '.360':
-        # cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,scale=2*trunc(iw/2):2*trunc(ih/2)[out]', '-map', '[out]'])
-        cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,crop=iw:ih:mod(iw\,2):mod(ih\,2)[out]', '-map', '[out]'])
-    cmd.extend(["-y", out]) #always overwrite
 
-    run_command_silently(cmd, stderr=subprocess.DEVNULL)
+    _, ext = os.path.splitext(video)
+    if ext == ".360":
+        if not width:
+            raise FatalException(".360 video must have 'Track1:ImageWidth' in exif data")
+        split360(video, out, framerate, width)
+    else:
+        cmd = [get_ffmpeg(), "-i", video]
+        if framerate:
+            cmd.extend(["-r", str(framerate)])
+        # if ext == '.360':
+        #     # cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,scale=2*trunc(iw/2):2*trunc(ih/2)[out]', '-map', '[out]'])
+        #     cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,crop=iw:ih:mod(iw\,2):mod(ih\,2)[out]', '-map', '[out]'])
+        cmd.extend(["-y", out]) #always overwrite
+
+        run_command_silently(cmd, stderr=subprocess.DEVNULL)
     num_frames = len(os.listdir(out.parent))
-    logger.info(f"video `{video}` split into {num_frames} frames, took {(datetime.now() - start_time).total_seconds()} seconds")
+    logger.info(f"video `{video.name}` split into {num_frames} frames, took {(datetime.now() - start_time).total_seconds()} seconds")
     return num_frames
     
+def split360(video:Path, out:Path, framerate, width):
+    cmd = [get_ffmpeg(), "-i", video]
+    track_paths = []
+    for N in [0, 5]:
+        cmd.extend(["-map", f"0:{N}", "-q:v", "1"])
+        if framerate:
+            cmd.extend(["-r", str(framerate)])
+        track_path = out.with_name(f"track{N}")
+        track_paths.append(track_path)
+        track_path.mkdir(exist_ok=True)
+        cmd.append(track_path/"img%05d.jpg")
+    cmd.extend(["-y"]) #always overwrite
+
+    run_command_silently(cmd, stderr=subprocess.DEVNULL)
+    run_command_silently([get_max2sphere(), "-w", width, "-n", 1, "-m", len(os.listdir(track_paths[0])), "-o", out, out.parent/"track%d/img%05d.jpg"])
+    delete_files(*track_paths)
 
 def copy_metadata_from_file(from_: Path, to_: Path):
     run_command_silently([get_exiftool(),"-TagsFromFile",from_, "-all:all>all:all", to_])
@@ -198,6 +221,9 @@ def get_exiftool():
 
 def get_magick():
     return os.environ.get("MAGICK_PATH") or 'magick'
+
+def get_max2sphere():
+    return BINARY_PATH/"max2sphere"
 
 def overlay_nadir(video, overlay, output, video_width, video_height, height_ratio=0.25):
     overlay_height = int(height_ratio * video_height)

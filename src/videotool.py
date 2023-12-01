@@ -120,7 +120,7 @@ def video_to_images(video: Path, out: Path, framerate:int=None):
     frames_dir = out/"_preprocessing"
     delete_files(frames_dir)
     frames_dir.mkdir(parents=True)
-    numframes = splitvideo(video, frames_dir/"FRAME-%05d.jpg", framerate)
+    numframes = splitvideo(video, frames_dir/"FRAME-%05d.jpg", framerate, metadata.get('Track1:ImageWidth'))
     assert abs(numframes-len(frames))<3, "extracted frames less than anticipated frames"
     first_frame_path = frames_dir/("FRAME-%05d.jpg"%1)
     copy_metadata_from_file(video, first_frame_path)
