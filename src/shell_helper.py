@@ -129,9 +129,10 @@ def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFA
         if image.get('GPS:GPSLatitudeRef', None) == "S":
             latitude = -latitude
         point = GPXTrackPoint(latitude=latitude, longitude=longitude, elevation=image['GPS:GPSAltitude'], time=date+i*delta)
-        ext1 = ElementTree.Element("gopro2gsv:InputPhoto")
-        ext1.text = str(image['path'])
-        point.extensions.append(ext1)
+        if image.get('path'):
+            ext1 = ElementTree.Element("gopro2gsv:InputPhoto")
+            ext1.text = str(image['path'])
+            point.extensions.append(ext1)
         seg.points.append(point)
     content = gpx.to_xml(version='1.1')
     with gpx_path.open("w") as f:
@@ -194,7 +195,8 @@ def split360(video:Path, out:Path, framerate, width):
     delete_files(*track_paths)
 
 def copy_metadata_from_file(from_: Path, to_: Path):
-    run_command_silently([get_exiftool(),"-TagsFromFile",from_, "-all:all>all:all", to_])
+    delete_files(to_.with_name(to_.name+"_exiftool_tmp"))
+    run_command_silently([get_exiftool(),"-TagsFromFile", from_, "-all:all>all:all", to_])
     delete_files(to_.with_name(to_.name+"_original"))
 
 def set_exif_metadata(video:Path, *key_values: tuple[str,str]):

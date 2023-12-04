@@ -12,10 +12,10 @@ from .errors import FatalException
 from .gsv import GSV
 from .imagetool import (fix_outlier, get_files_from_dir, process_into_videos,
                         write_images_to_dir)
-from .shell_helper import (delete_files, get_exif_details, get_streams,
+from .shell_helper import (delete_files, generate_gpx_from_images, get_exif_details, get_streams,
                            overlay_nadir)
 from .sql_helper import DB
-from .videotool import MINIMUM_GPS_POINTS, tag_all_images, video_to_images
+from .videotool import MINIMUM_GPS_POINTS, get_gps_data, tag_all_images, video_to_images
 from .constants import *
 
 FRAMES_PER_VIDEO = 300
@@ -146,7 +146,8 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             output_filepath = input_vid.with_name(f"{name}-gopro2gsv_output")
         else:
             output_filepath = Path(args.output_filepath)
-        log_filepath = output_filepath.with_name(os.path.splitext(output_filepath.name)[0] + ".log")
+        output_filename, _ = os.path.splitext(output_filepath.name)
+        log_filepath = output_filepath.with_name(output_filename + ".log")
         setLogFile(logger, log_filepath)
         
         if not args.extract_fps:
@@ -165,6 +166,8 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
                 raise FatalException(f"Expected equirectangular video, got `{ptype}`")
             width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
             logger.info(f"Found {width}x{height} video with {valid_frames} valid GPS points at {input_vid}")
+            fps, frames, _ = get_gps_data(metadata)
+            generate_gpx_from_images(frames, output_filepath.with_name(output_filename+".gpx"), frame_rate=fps)
             videos.append((input_vid, width, height, metadata, output_filepath))
         else:
             logger.info("extracting images")
