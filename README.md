@@ -39,6 +39,8 @@ python3 -m venv gopro2gsv-venv
 source gopro2gsv-venv/bin/activate
 # install requirements
 pip3 install -r requirements.txt
+git submodule update --init
+python3 setup.py build
 ```
 
 You will also need: 
@@ -103,8 +105,6 @@ The options available to run differ by mode as follows;
 	* e.g. `/path/to/nadir.png`
 * `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
 	* e.g. `25` (%)
-* `--outlier_speed_meters_sec` (optional): The maximum speed between GPS times. If speed exceeded between photos GPS times, GPS will be ignored. Default is `40` m/s (144 km/h)
-	* e.g. 20 `m/s`
 * `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
 	* e.g. `30` seconds
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
@@ -123,14 +123,11 @@ The options available to run differ by mode as follows;
 	* e.g. `/path/to/nadir.png`
 * `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
 	* e.g. `25` (%)
-* `--outlier_speed_meters_sec` (optional): The maximum speed between GPS times. If speed exceeded between photos GPS times, GPS will be ignored. Default is `40` m/s (144 km/h)
-	* e.g. 20 `m/s`
 * `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
 	* e.g. `30` seconds
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
 	* e.g. `/path/to/my/file-out`
 * `--upload_to_streetview` (optional): if passed will upload the image to StreetView (will require user to authenticate)
-
 
 #### Mode 4: .360 mode -> max2sphere -> timelapse frames -> final video (for MAX cameras)
 
@@ -143,8 +140,6 @@ The options available to run differ by mode as follows;
 	* e.g. `/path/to/nadir.png`
 * `--size_of_nadir` (optional, must use with `--path_to_nadir`): percentage height of output video nadir should cover. Default is 25% if not passed.
 	* e.g. `25` (%)
-* `--outlier_speed_meters_sec` (optional): The maximum speed between GPS times. If speed exceeded between photos GPS times, GPS will be ignored. Default is `40` m/s (144 km/h)
-	* e.g. 20 `m/s`
 * `--max_output_video_secs` (optional) The maximum length of any video in the output in seconds. May result in multiple video files per output if input cannot be packed into maximum video length specified. Default is `60` seconds (300 frames)
 	* e.g. `30` seconds
 * `--output_filepath` (required): name of video and directory for output. All log and GPX files will be named / placed using this information.
