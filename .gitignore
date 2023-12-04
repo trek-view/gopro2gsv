@@ -171,10 +171,10 @@ cython_debug/
 # venv in readme
 
 gopro2gsv-venv
+third-party
 tests
 
 *.sqlite
 *gopro2gsv.sqlite-journal
 gpx.fmt
 .python-version
-third-party/max2sphere
