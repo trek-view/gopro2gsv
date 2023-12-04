@@ -108,7 +108,7 @@ def validate_input_video(name, metadata):
     
     if not metatrack:
         raise FatalException("Could not find gpmd metadata track")
-    num_gps_points = len(metadata.list(metatrack+":GPSDateTime"))
+    num_gps_points = len(metadata.list(metatrack+":GPSLatitude"))
     if num_gps_points < MINIMUM_GPS_POINTS:
         raise FatalException(f"At least {MINIMUM_GPS_POINTS} GPS points required, got {num_gps_points}")
 
