@@ -156,9 +156,10 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
                 raise FatalException("More than one video stream in input_video, consider passing `--extract_fps`")
             metadata = get_exif_details(input_vid)
             valid_frames = 0
-            for k, v in metadata.items():
-                if k.endswith(":GPSDateTime") and k.startswith("Track"):
-                    valid_frames += len(v)
+            for k in metadata.keys():
+                if k.endswith(":GPSLatitude") and k.startswith("Track"):
+                    valid_frames += len(metadata.list(k))
+                    break
             if valid_frames < MINIMUM_GPS_POINTS:
                 raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
             ptype = metadata.get("XMP-GSpherical:ProjectionType", None)
