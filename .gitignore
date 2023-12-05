@@ -177,3 +177,4 @@ tests
 *gopro2gsv.sqlite-journal
 gpx.fmt
 .python-version
+*.data

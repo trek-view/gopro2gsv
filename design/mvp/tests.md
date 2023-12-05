@@ -105,7 +105,6 @@ Directory has 63 items. 2 are bad, so 18. Not enough for validation.
 python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-frames-removed/ \
 	--max_output_video_secs 20 \
-	--keep_extracted_frames \
 	--output_filepath tests/output/mode2/test2/UKHB001v205-frames-removed
 ```
 
@@ -117,7 +116,6 @@ Directory has 590 items. 590/5 (fixed frame rate packer) = 118 seconds of footag
 python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-frames-removed/ \
 	--max_output_video_secs 13 \
-	--keep_extracted_frames \
 	--output_filepath tests/output/mode2/test3/UKHB001v205-frames-removed
 ```
 
@@ -162,7 +160,7 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode3/test1/GS016843.mp4
 ```
 
-187 * 0.5 = 93.5 (94) frames = 94 / 5 = 18.8 seconds final output
+ffmpeg extracts 95 frames = 95 / 5 = 19 seconds final output
 
 Test some of the extracted frames to ensure geotagging is as expected (photos are 2 seconds apart and start from the first time in GPX file)
 
@@ -200,7 +198,7 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode3/test2/GS016843.mp4
 ```
 
-187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. 74.8/20 = 3.74. Thus expect 4 videos output. The first three 00:00:20 long. The fouth 00:00:14.800
+ffmpeg extracts 376 frames = 376 / 5 = 75.2 seconds final output. 75.2/20 = 3.76. Thus expect 4 videos output. The first three 00:00:20 long. The fouth 00:00:14.800
 
 ### Extract frames from video input at 0.5 FPS and rebuild video with 37 second max (185 frames) -- complex split
 
@@ -210,12 +208,12 @@ python3 gopro2gsv.py \
 	--extract_fps 2 \
 	--max_output_video_secs 37 \
 	--keep_extracted_frames \
-	--output_filepath tests/output/mode3/test2/GS016843.mp4
+	--output_filepath tests/output/mode3/test3/GS016843.mp4
 ```
 
-187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. 74.8/37 = 2.02. Expect 3 videos. The first video 00:00:37, the second video 00:00:35 seconds (as need to remove 20 frames to satify minumum length of last video), and final video would be 00:00:02.800.
+ffmpeg extracts 376 frames = 376 / 5 = 75.2 seconds final output. 75.2/37 = 2.03. Expect 3 videos. The first video 00:00:37, the second video 00:00:35 seconds (as need to remove 20 frames/2 secs to satify minumum length of last video), and final video would be 00:00:03.200.
 
-### Extract frames from video input at 0.5 FPS and add a nadir with 15 % height
+### Extract frames from video input at 0.5 FPS and add a nadir with 15 % height keep frames
 
 ```shell
 python3 gopro2gsv.py \
@@ -224,10 +222,19 @@ python3 gopro2gsv.py \
 	--keep_extracted_frames \
 	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
 	--size_of_nadir 15 \
-	--output_filepath tests/output/mode3/test3/GS016843
+	--output_filepath tests/output/mode3/test4/GS016843
 ```
 
-187 * 2 = 374 frames = 374 / 5 = 74.8 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:14.800.
+ffmpeg extracts 376 frames = 376 / 5 = 75.2 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:15.200. With a nadir.
+
+### Extract frames from video input at 0.5 FPS do not keep frames
+
+```shell
+python3 gopro2gsv.py \
+	--input_video tests/ski/GS016843.mp4 \
+	--extract_fps 2 \
+	--output_filepath tests/output/mode3/test5/GS016843
+```
 
 
 =========
