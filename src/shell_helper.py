@@ -147,6 +147,7 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     cmd.extend(["-i", glob])
     if num_frames:
         cmd.extend(["-vframes", str(num_frames)])
+    cmd.extend(['-pix_fmt', 'yuv420p10le', '-c:v', 'libx265', '-preset', 'slow', '-tune', 'stillimage', '-crf', '28'])
     cmd.extend(["-y", mp4_path]) #always overwrite
 
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
@@ -167,9 +168,6 @@ def splitvideo(video:Path, out:Path, framerate=None, width=None) -> int:
         cmd = [get_ffmpeg(), "-i", video]
         if framerate:
             cmd.extend(["-r", str(framerate)])
-        # if ext == '.360':
-        #     # cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,scale=2*trunc(iw/2):2*trunc(ih/2)[out]', '-map', '[out]'])
-        #     cmd.extend(["-filter_complex", '[0:v:0][0:v:1]vstack=inputs=2,v360=eac:equirect,crop=iw:ih:mod(iw\,2):mod(ih\,2)[out]', '-map', '[out]'])
         cmd.extend(["-y", out]) #always overwrite
 
         run_command_silently(cmd, stderr=subprocess.DEVNULL)
@@ -254,15 +252,3 @@ def delete_files(*files: Path):
                 os.remove(file)
         except Exception as e:
             pass
-
-
-def parse_stream(stream: str):
-    pass
-    # run_command_silently([get_ffmpeg(), "-i", video, "-i", nadir, "-filter_complex", f"[0:v][1:v] overlay={nadir_offset}", "-copy_unknown", "-map_metadata", "0", "-y", output])
-# print(test_image("/home/fqrious/tmp/fus-360-pho-002s6/MULTISHOT_0035_000000-2k.jpg"))
-
-# def do_overlay(video, overlay, output, overlay_width, overlay_height, overlay_offset):
-    
-if __name__ == "__main__":
-    out = run_command_silently(["magick", "convert", "./stock_nadirs/trek-view-circle-nadir.png", "-rotate", 180, "-distort", "depolar", 0, "-flip", "-flop", "-"], decode_output=False)
-    print(type(out), len(out))
