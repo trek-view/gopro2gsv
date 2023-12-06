@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from .errors import FatalException
 from .gsv import GSV
-from .imagetool import (fix_outlier, get_files_from_dir, process_into_videos,
+from .imagetool import (validate_frames, get_files_from_dir, process_into_videos,
                         write_images_to_dir)
 from .shell_helper import (delete_files, generate_gpx_from_images, get_exif_details, get_streams,
                            overlay_nadir)
@@ -129,7 +129,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
         log_filepath    = output_filepath.with_name(output_filename+".log")
         setLogFile(logger, log_filepath)
         valid_images, invalid_files = get_files_from_dir(input_dir)
-        valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec)
+        valid_images = validate_frames(valid_images, args.outlier_speed_meters_sec)
 
         processed_dir = output_filepath
         # gpx_file = input_dir/"processed.gpx"
@@ -176,7 +176,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             if args.keep_extracted_frames:
                 logger.info(f"Tagging {len(valid_images)} images")
                 tag_all_images(valid_images)
-            valid_images = fix_outlier(valid_images, args.outlier_speed_meters_sec)
+            valid_images = validate_frames(valid_images, args.outlier_speed_meters_sec)
             
             database.record_timelapse(valid_images)
             videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, output_filepath)

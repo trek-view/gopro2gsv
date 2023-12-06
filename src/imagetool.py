@@ -91,27 +91,21 @@ def get_files_from_dir(input_dir: Path) -> tuple[list[dict], list[dict]]:
 
     return valid_images, invalid_files
 
-def fix_outlier(valid_images, max_acceptable_velocity):
-    prev_date = valid_images and valid_images[0]["date"]
+def validate_frames(valid_images, max_acceptable_velocity):
     prev_image = valid_images and valid_images[0]
     for i, image in enumerate(valid_images):
         error = None
+        prev_date = prev_image["date"]
         date = image["date"]
         path: pathlib.Path = image["path"]
         name = path.name
         time_diff = date - prev_date
-        start_loc = prev_image["GPS:GPSLatitude"], prev_image["GPS:GPSLongitude"], prev_image["GPS:GPSAltitude"]
-        end_loc   = image["GPS:GPSLatitude"], image["GPS:GPSLongitude"], image["GPS:GPSAltitude"]
         if time_diff > timedelta(seconds=MAX_TIME_DIFFERENCE):
             error = GSVException(f"More than {MAX_TIME_DIFFERENCE} seconds between two succeeding frames: [{name}|{time_diff.total_seconds()} seconds]")
-        v, v_vector = calculateVelocities(start_loc, end_loc, time_diff.total_seconds())
-        if v > max_acceptable_velocity:
-            error = GSVException(f"Velocity {v} [{v_vector}] is greater than {max_acceptable_velocity}")
         if error:
             image["error"] = str(error)
             logger.warn(f"{error} for {image['path']}")
             continue
-        prev_date = date
         prev_image = image
         
     return valid_images
