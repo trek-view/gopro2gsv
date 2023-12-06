@@ -86,7 +86,7 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode2/test1A/UKHB001v205-some-bad-gps
 ```
 
-Directory has 63 items. 2 are bad, so 61. 61/5= 12.2 seconds of footage
+Directory has 63 items. 2 are bad, so 61. 61/ 5= 12.2 seconds of footage
 
 ### Testing smoothing with two bad GPS points (with custom value 20m/s set) but should not process
 
@@ -177,13 +177,13 @@ Check GPX
 ```
 
 ```shell
-exiftool tests/output/mode3/test1/GS016843-images/FRAME-00001.jpg -GPSDateTime
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00001.jpg -GPSDateTime -GPSLatitudeRef -GPSLongitudeRef
 # GPS Date/Time                   : 2023:03:02 08:13:00.904Z
-exiftool tests/output/mode3/test1/GS016843-images/FRAME-00002.jpg -GPSDateTime
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00002.jpg -GPSDateTime -GPSLatitudeRef -GPSLongitudeRef
 # GPS Date/Time                   : 2023:03:02 08:13:02.884Z
-exiftool tests/output/mode3/test1/GS016843-images/FRAME-00003.jpg -GPSDateTime
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00003.jpg -GPSDateTime -GPSLatitudeRef -GPSLongitudeRef
 # GPS Date/Time                   : 2023:03:02 08:13:04.860952005Z
-exiftool tests/output/mode3/test1/GS016843-images/FRAME-00004.jpg -GPSDateTime
+exiftool tests/output/mode3/test1/GS016843-images/FRAME-00004.jpg -GPSDateTime -GPSLatitudeRef -GPSLongitudeRef
 # GPS Date/Time                   : 2023:03:02 08:13:06.899Z
 ```
 
@@ -227,6 +227,7 @@ python3 gopro2gsv.py \
 
 ffmpeg extracts 376 frames = 376 / 5 = 75.2 seconds final output. Thus expect 2 videos output. One 00:01:00 long (max allowed length), and one 00:00:15.200. With a nadir.
 
+
 ### Extract frames from video input at 0.5 FPS do not keep frames
 
 ```shell
@@ -236,6 +237,19 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode3/test5/GS016843
 ```
 
+### Testing westerly lat
+
+```shell
+python3 gopro2gsv.py \
+	--input_video tests/tenerife/GS070135.mp4 \
+	--extract_fps 0.5 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode3/test6/GS070135
+```
+
+```shell
+exiftool -GPSLatitudeRef -GPSLongitudeRef tests/output/mode3/test6/GS070135-images/FRAME-00001.jpg
+```
 
 =========
 
@@ -243,6 +257,7 @@ python3 gopro2gsv.py \
 
 =========
 
+### Extract frames from 360 video input
 
 ```shell
 python3 gopro2gsv.py \
@@ -252,15 +267,24 @@ python3 gopro2gsv.py \
 	--output_filepath tests/output/mode4/test1/GS019359.mp4
 ```
 
+ffmpeg extracts 77 frames = 77 / 5 = 15.4 seconds final output.
 
-GS019359.360
+### Extract frames from 360 video input with 20 second max length and add a nadir
 
+```shell
+python3 gopro2gsv.py \
+	--input_video tests/360_file/GS019359.360 \
+	--extract_fps 2 \
+	--keep_extracted_frames \
+	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
+	--size_of_nadir 15 \
+	--output_filepath tests/output/mode4/test2/GS019359.mp4
+```
 
+ffmpeg extracts 305 frames = 305 / 5 = 61. Because 2nd video will be 1second, 2 seconds (20 frames) taken off first video. Expect first to be 58 seconds, and second 3 seconds.
 
+Check some metadata/GPS points in the video:
 
-
-
-
-
-
-
+```shell
+exiftool -GPSLatitudeRef -GPSLongitudeRef tests/output/mode4/test2/GS019359-images/FRAME-00001.jpg
+```
