@@ -147,7 +147,7 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     cmd.extend(["-i", glob])
     if num_frames:
         cmd.extend(["-vframes", str(num_frames)])
-    cmd.extend(['-pix_fmt', 'yuv420p10le', '-c:v', 'libx265', '-preset', 'slow', '-tune', 'stillimage', '-crf', '28'])
+    cmd.extend(['-pix_fmt', 'yuv420p10le', '-c:v', 'libx265', '-preset', 'slow', '-crf', '28'])
     cmd.extend(["-y", mp4_path]) #always overwrite
 
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
