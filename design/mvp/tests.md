@@ -80,6 +80,8 @@ exiftool -overwrite_original -GPSLatitude=20.1 -GPSLatitudeRef=N -GPSLongitude=-
 ```
 
 ```shell
+rm -r tests/output/mode2/test1A/ && \
+mkdir tests/output/mode2/test1A/ && \
 python3 gopro2gsv.py \
 	--input_directory tests/UKHB001v205-some-bad-gps/ \
 	--outlier_speed_meters_sec 20 \
@@ -257,9 +259,11 @@ exiftool -GPSLatitudeRef -GPSLongitudeRef tests/output/mode3/test6/GS070135-imag
 
 =========
 
-### Extract frames from 360 video input
+### Extract frames from 360 video input (5k)
 
 ```shell
+rm -r tests/output/mode4/test1/ && \
+mkdir tests/output/mode4/test1/ && \
 python3 gopro2gsv.py \
 	--input_video tests/360_file/GS019359.360 \
 	--extract_fps 0.5 \
@@ -269,16 +273,37 @@ python3 gopro2gsv.py \
 
 ffmpeg extracts 77 frames = 77 / 5 = 15.4 seconds final output.
 
+Is 4096 width in, should be 5376 out.
+
+
+### Extract frames from 360 video input (3k)
+
+```shell
+rm -r tests/output/mode4/test2/ && \
+mkdir tests/output/mode4/test2/ && \
+python3 gopro2gsv.py \
+	--input_video tests/360_file/GS018423.360 \
+	--extract_fps 2 \
+	--keep_extracted_frames \
+	--output_filepath tests/output/mode4/test2/GS018423.mp4
+```
+
+```shell
+exiftool -ImageWidth tests/output/mode4/test2/GS018423.mp4
+```
+
 ### Extract frames from 360 video input with 20 second max length and add a nadir
 
 ```shell
+rm -r tests/output/mode4/test3/ && \
+mkdir tests/output/mode4/test3/ && \
 python3 gopro2gsv.py \
 	--input_video tests/360_file/GS019359.360 \
 	--extract_fps 2 \
 	--keep_extracted_frames \
 	--path_to_nadir stock_nadirs/without_gopro/trek_view_full_nadir.png \
 	--size_of_nadir 15 \
-	--output_filepath tests/output/mode4/test2/GS019359.mp4
+	--output_filepath tests/output/mode4/test3/GS019359.mp4
 ```
 
 ffmpeg extracts 305 frames = 305 / 5 = 61. Because 2nd video will be 1second, 2 seconds (20 frames) taken off first video. Expect first to be 58 seconds, and second 3 seconds.
