@@ -6,6 +6,8 @@ from gpxpy.gpx import GPXTrack, GPX, GPXTrackSegment, GPXTrackPoint
 from xml.etree import ElementTree
 import tempfile
 import importlib.resources
+
+from .utils import metadata_dict
 from .errors import FatalException
 
 from logging import getLogger
@@ -16,6 +18,7 @@ DEFAULT_FRAME_RATE = 5
 MODULE_PATH = importlib.resources.files(__package__)
 ASSETS_PATH = MODULE_PATH / "assets"
 SUBMODULES  = MODULE_PATH/ "third-party"
+BINARY_PATH = MODULE_PATH/"bin"
 
 class InvalidImageException(Exception):
     pass
@@ -55,21 +58,16 @@ def getText(nodelist):
 def parse_exif_metadata(content: bytes):
     doc: Document = parseString(content)
     root: Element = None
-    out_vals: dict[Path, dict] = {}
+    out_vals: dict[Path, metadata_dict] = {}
     for root in doc.getElementsByTagName("rdf:Description"):
         file = Path(root.getAttribute("rdf:about"))
         child: Element = None
-        metadata = dict(path=file)
+        metadata = metadata_dict(path=file)
+        metadata["namespaces"] = [attr[6:] for attr in root.attributes.keys() if attr.startswith('xmlns:')]
         for child in root.childNodes:
             if child.nodeType == child.ELEMENT_NODE:
                 value = getText(child)
-                if first := metadata.get(child.tagName):
-                    if isinstance(first, list):
-                        metadata[child.tagName].append(value)
-                    else:
-                        metadata[child.tagName] = [first, value]
-                else:
-                    metadata[child.tagName] = value
+                metadata[child.tagName] = value
         out_vals[file] = metadata
     return out_vals
 
@@ -107,13 +105,11 @@ def test_image(exif_data):
             raise InvalidImageException(f"Image's exif data missing `{key}`")
     return True
 
-def generate_gpx_from_timelapse(dir: Path, gpx_path: Path):
+def generate_gpx_from(dir: Path):
     if not dir.exists():
         raise FatalException("Attempted to generate gpx from non-existent timelapse directory")
     output = run_command_silently([get_exiftool(), "-fileOrder", "gpsdatetime", "-p", ASSETS_PATH/"gpx.fmt", dir], stderr=subprocess.DEVNULL)
-    with gpx_path.open("w") as f:
-        f.write(output)
-    return
+    return output
 
 
 def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFAULT_FRAME_RATE, start_date=None):
@@ -128,14 +124,15 @@ def generate_gpx_from_images(images: list[dict], gpx_path: Path, frame_rate=DEFA
     for i, image in enumerate(images):
         longitude = float(image['GPS:GPSLongitude'])
         latitude  = float(image[ 'GPS:GPSLatitude'])
-        if image['GPS:GPSLongitudeRef'] == "W":
+        if image.get('GPS:GPSLongitudeRef', None) == "W":
             longitude = -longitude
-        if image['GPS:GPSLatitudeRef'] == "S":
+        if image.get('GPS:GPSLatitudeRef', None) == "S":
             latitude = -latitude
         point = GPXTrackPoint(latitude=latitude, longitude=longitude, elevation=image['GPS:GPSAltitude'], time=date+i*delta)
-        ext1 = ElementTree.Element("gopro2gsv:InputPhoto")
-        ext1.text = str(image['path'])
-        point.extensions.append(ext1)
+        if image.get('path'):
+            ext1 = ElementTree.Element("gopro2gsv:InputPhoto")
+            ext1.text = str(image['path'])
+            point.extensions.append(ext1)
         seg.points.append(point)
     content = gpx.to_xml(version='1.1')
     with gpx_path.open("w") as f:
@@ -150,23 +147,77 @@ def create_video_from_images(glob: Path, mp4_path: Path, start=0, num_frames=Non
     cmd.extend(["-i", glob])
     if num_frames:
         cmd.extend(["-vframes", str(num_frames)])
+    cmd.extend(['-pix_fmt', 'yuv420p10le', '-c:v', 'libx265', '-preset', 'fast', '-crf', '28'])
     cmd.extend(["-y", mp4_path]) #always overwrite
 
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
     return
 
-def copy_metadata_from_file(frame: Path, video: Path):
-    run_command_silently([get_exiftool(),"-TagsFromFile",frame, "-all:all>all:all", video])
+# returns number of frames
+def splitvideo(video:Path, out:Path, framerate=None, width=None) -> int:
+    start_time = datetime.now()
+    if os.listdir(out.parent):
+        raise FatalException(f"Cannot split into `{str(out.parent)}`, directory not empty")
+
+    _, ext = os.path.splitext(video)
+    if ext == ".360":
+        if not width:
+            raise FatalException(".360 video must have 'Track1:ImageWidth' in exif data")
+        split360(video, out, framerate, width)
+    else:
+        cmd = [get_ffmpeg(), "-i", video]
+        if framerate:
+            cmd.extend(["-r", str(framerate)])
+        cmd.extend(["-y", out]) #always overwrite
+
+        run_command_silently(cmd, stderr=subprocess.DEVNULL)
+    num_frames = len(os.listdir(out.parent))
+    logger.info(f"video `{video.name}` split into {num_frames} frames, took {(datetime.now() - start_time).total_seconds()} seconds")
+    return num_frames
+    
+def split360(video:Path, out:Path, framerate, width):
+    cmd = [get_ffmpeg(), "-i", video]
+    track_paths = []
+    for N in [0, 5]:
+        cmd.extend(["-map", f"0:{N}", "-q:v", "1"])
+        if framerate:
+            cmd.extend(["-r", str(framerate)])
+        track_path = out.with_name(f"track{N}")
+        track_paths.append(track_path)
+        track_path.mkdir(exist_ok=True)
+        cmd.append(track_path/"img%05d.jpg")
+    cmd.extend(["-y"]) #always overwrite
+
+    max2sphere_widths = {
+        2272: 3072,
+        4096: 5376,
+    }
+    max2sphere_width = max2sphere_widths.get(int(width))
+    if not max2sphere_width:
+        raise FatalException(f"Unsupported width for GoPro Max: {width} (choose from {list(max2sphere_widths.keys())})")
+    run_command_silently(cmd, stderr=subprocess.DEVNULL)
+    run_command_silently([get_max2sphere(), "-w", max2sphere_width, "-n", 1, "-m", len(os.listdir(track_paths[0])), "-o", out, out.parent/"track%d/img%05d.jpg"])
+    delete_files(*track_paths)
+
+def copy_metadata_from_file(from_: Path, to_: Path):
+    delete_files(to_.with_name(to_.name+"_exiftool_tmp"))
+    run_command_silently([get_exiftool(),"-TagsFromFile", from_, "-all:all>all:all", to_])
+    delete_files(to_.with_name(to_.name+"_original"))
+
+def set_exif_metadata(video:Path, *key_values: tuple[str,str]):
+    args = []
+    for k, v in key_values:
+        args.append(f"-{k}={v}")
+    run_command_silently([get_exiftool(), *args, video])
     delete_files(video.with_name(video.name+"_original"))
 
 def set_date_metadata(video: Path, date: datetime):
     dfm = date.isoformat().replace("-", ":")
-    run_command_silently([get_exiftool(), f"-Media*Date={dfm}", f"-Track*Date={dfm}", f"-AllDates={dfm}", video])
-    delete_files(video.with_name(video.name+"_original"))
+    set_exif_metadata(video, ("Media*Date", dfm), ("Track*Date", dfm), ("AllDates",dfm))
 
-def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, is_gpmd: bool):
+def make_video_gsv_compatible(video: Path, gpx: Path, output:Path, framerate, is_gpmd: bool):
     type_flag = "-g" if is_gpmd else "-c"
-    run_command_silently([sys.executable, MODULE_PATH/"telemetry_injector/telemetry-injector.py", type_flag, "-v", video, "-x", gpx, "-o", output])
+    run_command_silently([sys.executable, MODULE_PATH/"telemetry_injector/telemetry-injector.py", type_flag, "-v", video, "-x", gpx, "-o", output, "-r", framerate])
     return
 
 def get_ffmpeg():
@@ -177,6 +228,9 @@ def get_exiftool():
 
 def get_magick():
     return os.environ.get("MAGICK_PATH") or 'magick'
+
+def get_max2sphere():
+    return BINARY_PATH/"max2sphere"
 
 def overlay_nadir(video, overlay, output, video_width, video_height, height_ratio=0.25):
     overlay_height = int(height_ratio * video_height)
@@ -205,15 +259,3 @@ def delete_files(*files: Path):
                 os.remove(file)
         except Exception as e:
             pass
-
-
-def parse_stream(stream: str):
-    pass
-    # run_command_silently([get_ffmpeg(), "-i", video, "-i", nadir, "-filter_complex", f"[0:v][1:v] overlay={nadir_offset}", "-copy_unknown", "-map_metadata", "0", "-y", output])
-# print(test_image("/home/fqrious/tmp/fus-360-pho-002s6/MULTISHOT_0035_000000-2k.jpg"))
-
-# def do_overlay(video, overlay, output, overlay_width, overlay_height, overlay_offset):
-    
-if __name__ == "__main__":
-    out = run_command_silently(["magick", "convert", "./stock_nadirs/trek-view-circle-nadir.png", "-rotate", 180, "-distort", "depolar", 0, "-flip", "-flop", "-"], decode_output=False)
-    print(type(out), len(out))

@@ -1,28 +1,26 @@
 import argparse
 import functools
+import logging
 import os
 import pathlib
-from math import ceil
 from pathlib import Path
-import typing
+import shutil
 
-from .imagetool import get_files_from_dir, write_images_to_dir
-from .shell_helper import (copy_metadata_from_file, create_video_from_images,
-                           generate_gpx_from_images, get_exif_details,
-                           make_video_gsv_compatible, overlay_nadir,
-                           get_streams, delete_files, set_date_metadata)
-from datetime import timedelta
-from .gsv import GSV
-from .sql_helper import DB
-from .errors import FatalException
 from dotenv import load_dotenv
 
-import logging
+from .errors import FatalException
+from .gsv import GSV
+from .imagetool import (validate_frames, get_files_from_dir, process_into_videos,
+                        write_images_to_dir)
+from .shell_helper import (delete_files, generate_gpx_from_images, get_exif_details, get_streams,
+                           overlay_nadir)
+from .sql_helper import DB
+from .videotool import MINIMUM_GPS_POINTS, get_gps_data, tag_all_images, video_to_images
+from .constants import *
 
-MINIMUM_REQUIRED_FRAMES = 10
 FRAMES_PER_VIDEO = 300
 TIMELAPSE_FRAME_RATE = 5
-TIMELAPSE_MINIMUM_REQUIRED_FRAMES = 10
+VALID_EXTRACT_FPS = [5, 4, 2, 1, 0.5, 0.2]
 
 
 def newLogger(name: str) -> logging.Logger:
@@ -39,6 +37,7 @@ def newLogger(name: str) -> logging.Logger:
     return logging.getLogger("gopro2gsv")
 
 def setLogFile(logger, file: Path):
+    file.parent.mkdir(parents=True, exist_ok=True)
     logger.info(f"Saving log to `{file.absolute()}`")
     handler = logging.FileHandler(file, "w")
     handler.formatter = logging.Formatter(fmt='%(levelname)s %(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
@@ -51,12 +50,18 @@ def setLogFile(logger, file: Path):
 def parse_path(parser, path, is_file=True):
     p = pathlib.Path(path)
     if not p.exists():
-        parser.error(f"{p.absolute()}: no such file or directory")
+        raise argparse.ArgumentTypeError(f"{p.absolute()}: no such file or directory")
     if is_file and p.is_dir():
-        parser.error(f"{p.absolute()}: expected file, got directory")
+        raise argparse.ArgumentTypeError(f"{p.absolute()}: expected file, got directory")
     elif p.is_file() and not is_file:
-        parser.error(f"{p.absolute()}: expected directory, got file")
+        raise argparse.ArgumentTypeError(f"{p.absolute()}: expected directory, got file")
     return p
+
+def valid_nadir_range(value):
+    ivalue = int(value)
+    if 5 <= ivalue <= 30:
+        return ivalue
+    raise argparse.ArgumentTypeError(f"must be between 5 and 30 (inclusive), but got {ivalue}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="GoPro to Google Street View converter")
@@ -66,10 +71,15 @@ def parse_args():
     group.add_argument("--refresh_upload_status", action="store_true", help="rechecks all GSV uploaded sequences not in PROCESSED or FAILED states")
 
     parser.add_argument("--path_to_nadir", help="Path to the nadir image", type=functools.partial(parse_path, parser, is_file=True))
+    parser.add_argument("--size_of_nadir", type=valid_nadir_range, help="Percentage of video the nadir will cover", default=25)
 
     parser.add_argument("--output_filepath", help="Output filepath for video")
     parser.add_argument("--upload_to_streetview", action="store_true", help="Upload image to StreetView")
     parser.add_argument("--force_relogin", action="store_true", help="Don't use saved authentication")
+    parser.add_argument("--outlier_speed_meters_sec", "--outlier_speed", default=40, type=int, help="When a destination photo has a speed greater than the specified outlier speed it will be removed")
+    parser.add_argument("--extract_fps", default=None, help="", type=float, choices=VALID_EXTRACT_FPS)
+    parser.add_argument("--max_output_video_secs", default=60, help="Maximum length of video in seconds", type=int)
+    parser.add_argument("--keep_extracted_frames", action="store_true", help="store a copy of the extracted images used to create final video (with geotags). ")
 
     args = parser.parse_args()
     is_photo_mode = False
@@ -119,44 +129,15 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
         log_filepath    = output_filepath.with_name(output_filename+".log")
         setLogFile(logger, log_filepath)
         valid_images, invalid_files = get_files_from_dir(input_dir)
+        valid_images = validate_frames(valid_images, args.outlier_speed_meters_sec)
+
         processed_dir = output_filepath
         # gpx_file = input_dir/"processed.gpx"
         database.record_timelapse(invalid_files)
-        if len(valid_images) < TIMELAPSE_MINIMUM_REQUIRED_FRAMES:
-            raise FatalException(f"At least {TIMELAPSE_MINIMUM_REQUIRED_FRAMES} valid frames required, found {len(valid_images) or None}")
+        database.record_timelapse(valid_images)
         logger.info(f"Copying {len(valid_images)} images to new directory: {processed_dir.absolute()}")
-        write_images_to_dir(valid_images, processed_dir)
 
-        number_of_images = len(valid_images)
-        parts = ceil(number_of_images/FRAMES_PER_VIDEO)
-        frame_cursor = 0
-        for i in range(1, parts+1):
-            logger.info(f"Processing video #{i} of {parts}")
-            end   = frame_cursor + FRAMES_PER_VIDEO
-            if i == parts-1:
-                remaining_frames = number_of_images-end
-                if remaining_frames < 10:
-                    end -= 10
-            
-            gpx_file = output_filepath.with_name(f"{output_filename}-{i}.gpx")
-            mp4_file = output_filepath.with_name(f"{output_filename}-{i}_DIRTY.mp4")
-            final_mp4_file = output_filepath.with_name(f"{output_filename}-{i}.mp4")
-            first_image = valid_images[frame_cursor]
-            logger.info(f"generating gpx file for video #{i} at {gpx_file}")
-            start_date = valid_images[0]["date"] + frame_cursor*timedelta(seconds=1)/TIMELAPSE_FRAME_RATE
-            generate_gpx_from_images(valid_images[frame_cursor:end], gpx_file, start_date=start_date)
-            logger.info(f"generating video #{i} at {mp4_file}")
-            create_video_from_images(processed_dir/f"%05d.jpg", mp4_file, frame_cursor, end-frame_cursor, frame_rate=TIMELAPSE_FRAME_RATE, date=first_image['date'])
-            logger.info(f"adding gpmd data stream to video #{i} at {final_mp4_file}")
-            make_video_gsv_compatible(mp4_file, gpx_file, final_mp4_file, is_gpmd=True)
-            logger.info(f"copying metadata from first image into {final_mp4_file}")
-            copy_metadata_from_file(first_image['newpath'], final_mp4_file)
-        
-            delete_files(mp4_file)
-            set_date_metadata(final_mp4_file, first_image['date'])
-            videos.append((final_mp4_file, int(first_image["File:ImageWidth"]), int(first_image["File:ImageHeight"]), dict(images=valid_images[frame_cursor:end], gpx_file=str(gpx_file)), final_mp4_file))
-
-            frame_cursor = end
+        videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, processed_dir)
         delete_files(processed_dir)
     else:
         input_vid : Path = args.input_video
@@ -166,22 +147,47 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
         else:
             output_filepath = Path(args.output_filepath)
         output_filename, _ = os.path.splitext(output_filepath.name)
-        log_filepath    = output_filepath.with_name(output_filename+".log")
+        log_filepath = output_filepath.with_name(output_filename + ".log")
         setLogFile(logger, log_filepath)
+        
+        if not args.extract_fps:
+            streams = get_streams(input_vid)
+            if len(list(filter(lambda x: x.type == "video", streams))) > 1:
+                raise FatalException("More than one video stream in input_video, consider passing `--extract_fps`")
+            metadata = get_exif_details(input_vid)
+            valid_frames = 0
+            for k in metadata.keys():
+                if k.endswith(":GPSLatitude") and k.startswith("Track"):
+                    valid_frames += len(metadata.list(k))
+                    break
+            if valid_frames < MINIMUM_GPS_POINTS:
+                raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
+            ptype = metadata.get("XMP-GSpherical:ProjectionType", None)
+            if ptype != EQUIRECTANGULAR:
+                raise FatalException(f"Expected equirectangular video, got `{ptype}`")
+            width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
+            logger.info(f"Found {width}x{height} video with {valid_frames} valid GPS points at {input_vid}")
+            fps, frames, _ = get_gps_data(metadata)
+            generate_gpx_from_images(frames, output_filepath.with_name(output_filename+".gpx"), frame_rate=fps)
+            videos.append((input_vid, width, height, metadata, output_filepath))
+        else:
+            logger.info("extracting images")
+            valid_images, video_fps, frame_glob = video_to_images(input_vid, output_filepath, framerate=args.extract_fps)
+            if args.keep_extracted_frames:
+                logger.info(f"Tagging {len(valid_images)} images")
+                tag_all_images(valid_images)
+            valid_images = validate_frames(valid_images, args.outlier_speed_meters_sec)
+            
+            database.record_timelapse(valid_images)
+            videos = process_into_videos(valid_images, TIMELAPSE_FRAME_RATE, args.max_output_video_secs, output_filepath)
 
-        streams = get_streams(input_vid)
-        if len(list(filter(lambda x: x.type == "video", streams))) > 1:
-            raise FatalException("More than one video stream in input_video")
-        metadata = get_exif_details(input_vid)
-        valid_frames = 0
-        for k, v in metadata.items():
-            if k.endswith(":GPSDateTime") and k.startswith("Track"):
-                valid_frames += len(v)
-        if valid_frames < MINIMUM_REQUIRED_FRAMES:
-            raise FatalException(f"Less than 10 valid frames in video: {len(v)} found")
-        width, height = int(metadata['Track1:ImageWidth']), int(metadata['Track1:ImageHeight'])
-        logger.info(f"Found {width}x{height} video with {valid_frames} valid frames at {input_vid}")
-        videos.append((input_vid, width, height, metadata, output_filepath))
+            if args.keep_extracted_frames:
+                output_filename, _ = os.path.splitext(output_filepath.name)
+                frames_dir = output_filepath.with_name(f"{output_filename}-images")
+                delete_files(frames_dir)
+                logger.info(f"--keep_extracted_frames passed, moving processed frames into `{frames_dir}`")
+                shutil.move(frame_glob.parent, frames_dir)
+            delete_files(frame_glob.parent.parent)
     
     for i, (video, width, height, more, output_path) in enumerate(videos):
         name, _ = os.path.splitext(output_path.name)
@@ -191,7 +197,7 @@ def gopro2gsv(args, is_photo_mode, logger: logging.Logger):
             logger.info("Adding nadir to video")
             newpath = output_path.with_name(f"{name}_with-nadir.mp4")
             newpath.parent.mkdir(exist_ok=True, parents=True)
-            overlay_nadir(video, args.path_to_nadir, newpath, width, height)
+            overlay_nadir(video, args.path_to_nadir, newpath, width, height, height_ratio=args.size_of_nadir/100)
         
         # delete input video file if it's created by us
         if more.get('gpx_file') and video != newpath:

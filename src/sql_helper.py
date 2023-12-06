@@ -61,18 +61,6 @@ class DB:
                 )
             ''')
 
-            # # Create TimelapseImages table
-            # cursor.execute('''
-            #     CREATE TABLE TimelapseImage (
-            #         id INTEGER PRIMARY KEY,
-            #         cmdline TEXT,
-            #         input_path TEXT,
-            #         final_path TEXT,
-            #         gpx_file   TEXT,
-            #         log_path   TEXT,
-            #         streetview_id TEXT
-            #     )
-            # ''')
 
             # Create Photos table
             cursor.execute('''
