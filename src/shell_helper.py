@@ -188,8 +188,15 @@ def split360(video:Path, out:Path, framerate, width):
         cmd.append(track_path/"img%05d.jpg")
     cmd.extend(["-y"]) #always overwrite
 
+    max2sphere_widths = {
+        2272: 3072,
+        4096: 5376,
+    }
+    max2sphere_width = max2sphere_widths.get(int(width))
+    if not max2sphere_width:
+        raise FatalException(f"Unsupported width for GoPro Max: {width} (choose from {list(max2sphere_widths.keys())})")
     run_command_silently(cmd, stderr=subprocess.DEVNULL)
-    run_command_silently([get_max2sphere(), "-w", width, "-n", 1, "-m", len(os.listdir(track_paths[0])), "-o", out, out.parent/"track%d/img%05d.jpg"])
+    run_command_silently([get_max2sphere(), "-w", max2sphere_width, "-n", 1, "-m", len(os.listdir(track_paths[0])), "-o", out, out.parent/"track%d/img%05d.jpg"])
     delete_files(*track_paths)
 
 def copy_metadata_from_file(from_: Path, to_: Path):
