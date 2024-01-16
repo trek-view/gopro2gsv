@@ -49,7 +49,7 @@ def get_gps_data(metadata, video_fps=None):
     for i, group in enumerate(groups[:-1]):
         start_time, end_time = group["date"], groups[i+1]["date"]
         duration = (end_time - start_time)
-        timediff = duration/len(group['data'])
+        timediff = duration/(len(group['data']) or 1)
         for i, point in enumerate(group["data"]):
             point["date"] = start_time + timediff*i
             point["media_time"] = (point["date"] - media_start_time).total_seconds()
